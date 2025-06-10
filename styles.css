@@ -31,6 +31,11 @@ body {
     line-height: 1.5;
 }
 
+/* Icon alignment fixes */
+i[data-feather] {
+    vertical-align: middle;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -150,6 +155,9 @@ body {
     color: var(--text-secondary);
     width: 16px;
     height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .search-container input {
@@ -222,6 +230,7 @@ select:focus {
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     user-select: none;
+    position: relative;
 }
 
 .schematics-table th:hover {
@@ -232,6 +241,18 @@ select:focus {
     margin-left: 0.5rem;
     width: 12px;
     height: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.schematics-table th.sort-asc i {
+    transform: rotate(180deg);
+}
+
+.schematics-table th.sort-desc i {
+    transform: rotate(0deg);
 }
 
 .schematics-table td {

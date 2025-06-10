@@ -194,6 +194,9 @@ function sortTable(column) {
         sortOrder = 'asc';
     }
     
+    // Update header classes for visual indication
+    updateSortHeaders();
+    
     currentData.sort((a, b) => {
         let aValue = a[column];
         let bValue = b[column];
@@ -214,6 +217,22 @@ function sortTable(column) {
     });
     
     renderData();
+}
+
+// Update sort header visual indicators
+function updateSortHeaders() {
+    // Remove all sort classes from headers
+    document.querySelectorAll('.schematics-table th').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Add appropriate class to current sort column
+    if (sortColumn) {
+        const header = document.querySelector(`.schematics-table th[onclick*="${sortColumn}"]`);
+        if (header) {
+            header.classList.add('sort-' + sortOrder);
+        }
+    }
 }
 
 // View toggle functionality
@@ -325,6 +344,9 @@ function renderTableView() {
     
     // Re-initialize Feather icons
     feather.replace();
+    
+    // Update sort header indicators
+    updateSortHeaders();
 }
 
 // Render grid view
