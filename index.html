@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schematics Admin - PROTO Zips</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Feather Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/feather.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Schematics Admin</h1>
+            <button class="btn btn-primary" onclick="openAddSchematicModal()">
+                <i data-feather="plus"></i>
+                Add Schematic
+            </button>
+        </header>
+
+        <div class="controls">
+            <div class="controls-left">
+                <div class="search-container">
+                    <i data-feather="search"></i>
+                    <input type="text" id="searchInput" placeholder="Search schematics..." onkeyup="handleSearch()">
+                </div>
+            </div>
+            
+            <div class="controls-right">
+                <select id="modelFilter" onchange="handleModelFilter()">
+                    <option value="all">View All Models</option>
+                    <option value="Jerr-Dan">Jerr-Dan</option>
+                    <option value="Century Steel Carrier">Century Steel Carrier</option>
+                    <option value="Miller Industries">Miller Industries</option>
+                </select>
+                
+                <select id="sortBy" onchange="handleSort()">
+                    <option value="recent">Most Recent</option>
+                    <option value="name">Name</option>
+                    <option value="attention">Needs Attention</option>
+                </select>
+                
+                <div class="view-toggle">
+                    <button class="btn btn-secondary toggle-btn active" onclick="toggleView('table')" id="tableViewBtn">
+                        <i data-feather="list"></i>
+                    </button>
+                    <button class="btn btn-secondary toggle-btn" onclick="toggleView('grid')" id="gridViewBtn">
+                        <i data-feather="grid"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Table View -->
+            <div id="tableView" class="view-container active">
+                <div class="table-container">
+                    <table class="schematics-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable('name')">
+                                    Name <i data-feather="chevron-down"></i>
+                                </th>
+                                <th onclick="sortTable('image')">
+                                    Image <i data-feather="chevron-down"></i>
+                                </th>
+                                <th onclick="sortTable('imageSize')">
+                                    Image Size <i data-feather="chevron-down"></i>
+                                </th>
+                                <th onclick="sortTable('needsAttention')">
+                                    Needs Attention <i data-feather="chevron-down"></i>
+                                </th>
+                                <th onclick="sortTable('lastEditedDate')">
+                                    Last Edited <i data-feather="chevron-down"></i>
+                                </th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schematicsTableBody">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="pagination">
+                    <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtn">
+                        <i data-feather="chevron-left"></i>
+                        Previous
+                    </button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtn">
+                        Next
+                        <i data-feather="chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid View -->
+            <div id="gridView" class="view-container">
+                <div class="grid-container" id="schematicsGrid">
+                    <!-- Grid items will be populated by JavaScript -->
+                </div>
+                
+                <div class="pagination">
+                    <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtnGrid">
+                        <i data-feather="chevron-left"></i>
+                        Previous
+                    </button>
+                    <span id="pageInfoGrid">Page 1 of 1</span>
+                    <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtnGrid">
+                        Next
+                        <i data-feather="chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Schematic Modal -->
+    <div id="addSchematicModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Schematic</h2>
+                <button class="close-btn" onclick="closeAddSchematicModal()">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <form id="addSchematicForm" onsubmit="handleAddSchematic(event)">
+                <div class="form-group">
+                    <label for="schematicName">Name:</label>
+                    <input type="text" id="schematicName" required>
+                </div>
+                <div class="form-group">
+                    <label for="schematicImage">Image URL:</label>
+                    <input type="url" id="schematicImage" required>
+                </div>
+                <div class="form-group">
+                    <label for="schematicModels">Associated Models (comma separated):</label>
+                    <input type="text" id="schematicModels" placeholder="Jerr-Dan, Century Steel Carrier">
+                </div>
+                <div class="form-group">
+                    <label for="schematicPartCount">Part Count:</label>
+                    <input type="number" id="schematicPartCount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="schematicNeedsAttention">
+                        Needs Attention
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddSchematicModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Schematic</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Initialize Feather icons
+        feather.replace();
+    </script>
+</body>
+</html>
