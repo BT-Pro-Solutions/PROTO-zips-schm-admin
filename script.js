@@ -3,8 +3,8 @@ const dummyData = [
     {
         id: 1,
         name: "Hydraulic Lift Assembly",
-        image: "https://via.placeholder.com/300x200/007bff/ffffff?text=Hydraulic+Lift",
-        imageSize: "2.4 MB",
+        image: "schematics/Cable Roller Assembly.jpg",
+        imageSize: "2048x1536",
         associatedModels: ["Jerr-Dan", "Century Steel Carrier"],
         partCount: 45,
         needsAttention: true,
@@ -14,8 +14,8 @@ const dummyData = [
     {
         id: 2,
         name: "Winch Control System",
-        image: "https://via.placeholder.com/300x200/28a745/ffffff?text=Winch+Control",
-        imageSize: "1.8 MB",
+        image: "schematics/Winch Clutch Control .jpg",
+        imageSize: "1920x1440",
         associatedModels: ["Jerr-Dan"],
         partCount: 32,
         needsAttention: false,
@@ -24,9 +24,9 @@ const dummyData = [
     },
     {
         id: 3,
-        name: "Boom Extension Mechanism",
-        image: "https://via.placeholder.com/300x200/ffc107/000000?text=Boom+Extension",
-        imageSize: "3.1 MB",
+        name: "Tilt & Extend Hydraulic Cylinders",
+        image: "schematics/W:L Tilt, Tow Bar Extend, & Wheel Lift Extend Hydraulic Cylinders.jpg",
+        imageSize: "2560x1920",
         associatedModels: ["Century Steel Carrier", "Miller Industries"],
         partCount: 28,
         needsAttention: true,
@@ -35,9 +35,9 @@ const dummyData = [
     },
     {
         id: 4,
-        name: "Safety Override Panel",
-        image: "https://via.placeholder.com/300x200/dc3545/ffffff?text=Safety+Panel",
-        imageSize: "1.2 MB",
+        name: "Standard PTO Panel",
+        image: "schematics/Standard PTO Panel.jpg",
+        imageSize: "1920x1280",
         associatedModels: ["Jerr-Dan", "Miller Industries"],
         partCount: 18,
         needsAttention: false,
@@ -46,9 +46,9 @@ const dummyData = [
     },
     {
         id: 5,
-        name: "Electrical Harness Layout",
-        image: "https://via.placeholder.com/300x200/6f42c1/ffffff?text=Electrical+Harness",
-        imageSize: "4.2 MB",
+        name: "Anti-Tilt Assembly",
+        image: "schematics/Anti-Tilt Assembly.jpg",
+        imageSize: "1600x1200",
         associatedModels: ["Century Steel Carrier"],
         partCount: 67,
         needsAttention: false,
@@ -57,9 +57,9 @@ const dummyData = [
     },
     {
         id: 6,
-        name: "Cab Door Assembly",
-        image: "https://via.placeholder.com/300x200/20c997/ffffff?text=Cab+Door",
-        imageSize: "2.9 MB",
+        name: "Light Bar Assembly",
+        image: "schematics/Light Bar Assembly.jpg",
+        imageSize: "2200x1650",
         associatedModels: ["Jerr-Dan"],
         partCount: 23,
         needsAttention: true,
@@ -68,9 +68,9 @@ const dummyData = [
     },
     {
         id: 7,
-        name: "Hydraulic Tank Configuration",
-        image: "https://via.placeholder.com/300x200/fd7e14/ffffff?text=Hydraulic+Tank",
-        imageSize: "1.7 MB",
+        name: "RH Control & Crossrod Assembly",
+        image: "schematics/RH Control & Crossrod Assembly.jpg",
+        imageSize: "1920x1440",
         associatedModels: ["Miller Industries"],
         partCount: 15,
         needsAttention: false,
@@ -79,9 +79,9 @@ const dummyData = [
     },
     {
         id: 8,
-        name: "Control Module Wiring",
-        image: "https://via.placeholder.com/300x200/e83e8c/ffffff?text=Control+Wiring",
-        imageSize: "3.6 MB",
+        name: "Red and Amber Light Assembly",
+        image: "schematics/Red and Amber Light Assembly.jpg",
+        imageSize: "2400x1800",
         associatedModels: ["Jerr-Dan", "Century Steel Carrier", "Miller Industries"],
         partCount: 52,
         needsAttention: true,
@@ -90,9 +90,9 @@ const dummyData = [
     },
     {
         id: 9,
-        name: "Outrigger Positioning System",
-        image: "https://via.placeholder.com/300x200/6610f2/ffffff?text=Outrigger+System",
-        imageSize: "2.1 MB",
+        name: "Dashboard Panel",
+        image: "schematics/dashboard-panel.jpg",
+        imageSize: "2048x1365",
         associatedModels: ["Century Steel Carrier"],
         partCount: 34,
         needsAttention: false,
@@ -101,14 +101,25 @@ const dummyData = [
     },
     {
         id: 10,
-        name: "Emergency Stop Circuit",
-        image: "https://via.placeholder.com/300x200/dc3545/ffffff?text=Emergency+Stop",
-        imageSize: "0.9 MB",
+        name: "Lift Adapter Assembly",
+        image: "schematics/lift-adapter.jpg",
+        imageSize: "1440x1080",
         associatedModels: ["Jerr-Dan", "Miller Industries"],
         partCount: 12,
         needsAttention: false,
         lastEditedBy: "robert.taylor",
         lastEditedDate: new Date("2023-12-15")
+    },
+    {
+        id: 11,
+        name: "Toolbox Assembly",
+        image: "schematics/toolbox.jpg",
+        imageSize: "1920x1280",
+        associatedModels: ["Miller Industries"],
+        partCount: 8,
+        needsAttention: true,
+        lastEditedBy: "kevin.chen",
+        lastEditedDate: new Date("2023-12-10")
     }
 ];
 
@@ -198,17 +209,34 @@ function sortTable(column) {
     updateSortHeaders();
     
     currentData.sort((a, b) => {
-        let aValue = a[column];
-        let bValue = b[column];
+        let aValue, bValue;
         
-        if (column === 'lastEditedDate') {
-            aValue = new Date(aValue);
-            bValue = new Date(bValue);
-        }
-        
-        if (column === 'needsAttention') {
-            aValue = aValue ? 1 : 0;
-            bValue = bValue ? 1 : 0;
+        // Map column names to data properties
+        switch(column) {
+            case 'name':
+                aValue = a.name;
+                bValue = b.name;
+                break;
+            case 'image':
+                aValue = a.name; // Sort by name for image column
+                bValue = b.name;
+                break;
+            case 'imageSize':
+                // Convert size to bytes for proper sorting
+                aValue = parseFloat(a.imageSize);
+                bValue = parseFloat(b.imageSize);
+                break;
+            case 'needsAttention':
+                aValue = a.needsAttention ? 1 : 0;
+                bValue = b.needsAttention ? 1 : 0;
+                break;
+            case 'lastEditedDate':
+                aValue = new Date(a.lastEditedDate);
+                bValue = new Date(b.lastEditedDate);
+                break;
+            default:
+                aValue = a[column];
+                bValue = b[column];
         }
         
         if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
@@ -228,10 +256,14 @@ function updateSortHeaders() {
     
     // Add appropriate class to current sort column
     if (sortColumn) {
-        const header = document.querySelector(`.schematics-table th[onclick*="${sortColumn}"]`);
-        if (header) {
-            header.classList.add('sort-' + sortOrder);
-        }
+        // Find the header by matching the onclick attribute
+        const headers = document.querySelectorAll('.schematics-table th[onclick]');
+        headers.forEach(header => {
+            const onclickValue = header.getAttribute('onclick');
+            if (onclickValue && onclickValue.includes(`'${sortColumn}'`)) {
+                header.classList.add('sort-' + sortOrder);
+            }
+        });
     }
 }
 
@@ -319,7 +351,6 @@ function renderTableView() {
             <td>
                 <span class="status-badge ${item.needsAttention ? 'status-attention' : 'status-good'}">
                     <i data-feather="${item.needsAttention ? 'alert-triangle' : 'check-circle'}"></i>
-                    ${item.needsAttention ? 'Needs Attention' : 'Good'}
                 </span>
             </td>
             <td>

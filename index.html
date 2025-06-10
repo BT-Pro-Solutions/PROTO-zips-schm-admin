@@ -21,7 +21,7 @@
         <div class="controls">
             <div class="controls-left">
                 <div class="search-container">
-                    <i data-feather="search"></i>
+                    <i data-feather="search" class="search-icon"></i>
                     <input type="text" id="searchInput" placeholder="Search schematics..." onkeyup="handleSearch()">
                 </div>
             </div>
@@ -37,7 +37,7 @@
                 <select id="sortBy" onchange="handleSort()">
                     <option value="recent">Most Recent</option>
                     <option value="name">Name</option>
-                    <option value="attention">Needs Attention</option>
+                    <option value="attention">Needs Review</option>
                 </select>
                 
                 <div class="view-toggle">
@@ -68,7 +68,7 @@
                                     Image Size <i data-feather="chevron-down"></i>
                                 </th>
                                 <th onclick="sortTable('needsAttention')">
-                                    Needs Attention <i data-feather="chevron-down"></i>
+                                    Needs Review <i data-feather="chevron-down"></i>
                                 </th>
                                 <th onclick="sortTable('lastEditedDate')">
                                     Last Edited <i data-feather="chevron-down"></i>
