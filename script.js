@@ -429,52 +429,499 @@ function renderGridView() {
     feather.replace();
 }
 
+// Global state for modal
+let currentSchematicId = null;
+let isEditMode = false;
+let selectedDepartments = [];
+let mockAINumbers = [];
+let partsData = [];
+
+// Brand and model data
+const brandModelData = {
+    'jerr-dan': ['Carrier 16', 'Carrier 20', 'MPL-NG', 'Quick Swing'],
+    'century': ['10 Series', '12 Series', 'Steel Carrier', 'Heavy Duty'],
+    'miller': ['Model 9000', 'Model 8000', 'Century 440', 'Vulcan']
+};
+
+// Department suggestions
+const departmentSuggestions = [
+    'wreckers', 'car carriers', 'snow removal', 'toolboxes', 'tow dollies',
+    'hydraulics', 'electrical', 'lighting', 'controls', 'winches'
+];
+
 // Modal functionality
-function openAddSchematicModal() {
-    document.getElementById('addSchematicModal').classList.add('active');
+function openSchematicModal(id = null) {
+    currentSchematicId = id;
+    isEditMode = id !== null;
+    
+    const modal = document.getElementById('schematicModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const settingsGroup = document.getElementById('settingsGroup');
+    
+    // Reset form and state
+    document.getElementById('schematicForm').reset();
+    selectedDepartments = [];
+    mockAINumbers = [];
+    partsData = [];
+    
+    // Update modal for add/edit mode
+    if (isEditMode) {
+        modalTitle.textContent = 'Edit Schematic';
+        submitBtn.textContent = 'Update Schematic';
+        settingsGroup.style.display = 'block';
+        populateEditForm(id);
+    } else {
+        modalTitle.textContent = 'Add New Schematic';
+        submitBtn.textContent = 'Add Schematic';
+        settingsGroup.style.display = 'none';
+    }
+    
+    // Show modal and expand first section
+    modal.classList.add('active');
+    expandSection('identity');
+    
+    // Update department tags display
+    updateDepartmentTags();
 }
 
-function closeAddSchematicModal() {
-    document.getElementById('addSchematicModal').classList.remove('active');
-    document.getElementById('addSchematicForm').reset();
+function closeSchematicModal() {
+    const modal = document.getElementById('schematicModal');
+    modal.classList.remove('active');
+    
+    // Reset all form fields and state
+    document.getElementById('schematicForm').reset();
+    selectedDepartments = [];
+    mockAINumbers = [];
+    partsData = [];
+    currentSchematicId = null;
+    isEditMode = false;
+    
+    // Hide preview containers
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('partsTableContainer').style.display = 'none';
 }
 
-// Handle add schematic form submission
-function handleAddSchematic(event) {
+function populateEditForm(id) {
+    const schematic = dummyData.find(item => item.id === id);
+    if (!schematic) return;
+    
+    // Populate basic fields
+    document.getElementById('schematicName').value = schematic.name;
+    
+    // Mock department data (since we don't have it in current data structure)
+    selectedDepartments = ['wreckers', 'car carriers'];
+    updateDepartmentTags();
+    
+    // Mock brand/model selection
+    document.getElementById('schematicBrand').value = 'jerr-dan';
+    handleBrandChange();
+    document.getElementById('schematicModel').value = brandModelData['jerr-dan'][0];
+    
+    // If there's an existing image, show preview
+    if (schematic.image) {
+        showImagePreview(schematic.image);
+        
+        // Mock some AI-detected numbers for demonstration
+        mockAINumbers = [
+            { number: '1', x: 20, y: 30, confidence: 0.95 },
+            { number: '2', x: 60, y: 25, confidence: 0.88 },
+            { number: '3', x: 40, y: 70, confidence: 0.92 }
+        ];
+        
+        // Mock parts data
+        partsData = [
+            { schematicNumber: '1', partSku: 'ABC-123', quantity: '2', parentSku: '', confidence: 0.95 },
+            { schematicNumber: '2', partSku: 'DEF-456', quantity: '1', parentSku: 'ABC-123', confidence: 0.88 },
+            { schematicNumber: '3', partSku: '', quantity: '', parentSku: '', confidence: 0.92 }
+        ];
+        
+        displayNumberOverlays();
+        updatePartsTable();
+        document.getElementById('partsTableContainer').style.display = 'block';
+    }
+}
+
+// Section toggle functionality
+function toggleSection(sectionName) {
+    const section = document.getElementById(sectionName + 'Section');
+    const header = section.parentElement.querySelector('.section-header');
+    
+    if (section.classList.contains('active')) {
+        section.classList.remove('active');
+        header.classList.add('collapsed');
+    } else {
+        // Close all other sections
+        document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.section-header').forEach(h => h.classList.add('collapsed'));
+        
+        // Open this section
+        section.classList.add('active');
+        header.classList.remove('collapsed');
+    }
+}
+
+function expandSection(sectionName) {
+    const section = document.getElementById(sectionName + 'Section');
+    const header = section.parentElement.querySelector('.section-header');
+    
+    // Close all sections first
+    document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.section-header').forEach(h => h.classList.add('collapsed'));
+    
+    // Open the specified section
+    section.classList.add('active');
+    header.classList.remove('collapsed');
+}
+
+// Department tagging functionality
+function handleDepartmentInput(event) {
+    const input = event.target;
+    const value = input.value.toLowerCase().trim();
+    
+    if (event.key === 'Enter' && value) {
+        event.preventDefault();
+        addDepartment(value);
+        input.value = '';
+        hideDepartmentSuggestions();
+        return;
+    }
+    
+    if (value.length > 0) {
+        showDepartmentSuggestions(value);
+    } else {
+        hideDepartmentSuggestions();
+    }
+}
+
+function addDepartment(department) {
+    if (!selectedDepartments.includes(department)) {
+        selectedDepartments.push(department);
+        updateDepartmentTags();
+    }
+}
+
+function removeDepartment(department) {
+    selectedDepartments = selectedDepartments.filter(d => d !== department);
+    updateDepartmentTags();
+}
+
+function updateDepartmentTags() {
+    const container = document.getElementById('departmentTags');
+    container.innerHTML = '';
+    
+    selectedDepartments.forEach(dept => {
+        const tag = document.createElement('div');
+        tag.className = 'department-tag';
+        tag.innerHTML = `
+            ${dept}
+            <span class="remove-tag" onclick="removeDepartment('${dept}')">
+                <i data-feather="x"></i>
+            </span>
+        `;
+        container.appendChild(tag);
+    });
+    
+    // Re-initialize feather icons
+    feather.replace();
+}
+
+function showDepartmentSuggestions(filter) {
+    const suggestions = departmentSuggestions.filter(dept => 
+        dept.includes(filter) && !selectedDepartments.includes(dept)
+    );
+    
+    const container = document.getElementById('departmentSuggestions');
+    container.innerHTML = '';
+    
+    if (suggestions.length > 0) {
+        suggestions.forEach(suggestion => {
+            const div = document.createElement('div');
+            div.className = 'department-suggestion';
+            div.textContent = suggestion;
+            div.onclick = () => {
+                addDepartment(suggestion);
+                document.getElementById('schematicDepartment').value = '';
+                hideDepartmentSuggestions();
+            };
+            container.appendChild(div);
+        });
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function hideDepartmentSuggestions() {
+    document.getElementById('departmentSuggestions').style.display = 'none';
+}
+
+// Brand and model handling
+function handleBrandChange() {
+    const brandSelect = document.getElementById('schematicBrand');
+    const modelSelect = document.getElementById('schematicModel');
+    const selectedBrand = brandSelect.value;
+    
+    modelSelect.innerHTML = '<option value="">Select a model...</option>';
+    
+    if (selectedBrand && brandModelData[selectedBrand]) {
+        modelSelect.disabled = false;
+        brandModelData[selectedBrand].forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+        });
+    } else {
+        modelSelect.disabled = true;
+    }
+}
+
+// Image upload and processing
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file.');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Check minimum dimensions
+            if (img.width < 800 || img.height < 600) {
+                alert('Image must be at least 800x600 pixels.');
+                return;
+            }
+            
+            showImagePreview(e.target.result);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function showImagePreview(imageSrc) {
+    const container = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('previewImage');
+    
+    previewImg.src = imageSrc;
+    container.style.display = 'block';
+    
+    // Clear any existing overlays
+    document.getElementById('numberOverlays').innerHTML = '';
+    mockAINumbers = [];
+    partsData = [];
+    
+    // Expand the diagram section
+    expandSection('diagram');
+}
+
+// Mock AI number scanning
+function scanForNumbers() {
+    // Mock AI detection with random positions
+    mockAINumbers = [
+        { number: '1', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.95 },
+        { number: '2', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.88 },
+        { number: '3', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.92 },
+        { number: '4', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.76 },
+        { number: '5', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.83 }
+    ];
+    
+    // Initialize parts data
+    partsData = mockAINumbers.map(num => ({
+        schematicNumber: num.number,
+        partSku: '',
+        quantity: '',
+        parentSku: '',
+        confidence: num.confidence
+    }));
+    
+    displayNumberOverlays();
+    updatePartsTable();
+    document.getElementById('partsTableContainer').style.display = 'block';
+}
+
+function displayNumberOverlays() {
+    const container = document.getElementById('numberOverlays');
+    container.innerHTML = '';
+    
+    mockAINumbers.forEach(num => {
+        const overlay = document.createElement('div');
+        overlay.className = 'number-overlay';
+        overlay.style.left = num.x + '%';
+        overlay.style.top = num.y + '%';
+        overlay.textContent = num.number;
+        container.appendChild(overlay);
+    });
+}
+
+// Parts table management
+function updatePartsTable() {
+    const tbody = document.getElementById('partsTableBody');
+    tbody.innerHTML = '';
+    
+    partsData.forEach((part, index) => {
+        const row = document.createElement('tr');
+        
+        const confidenceClass = part.confidence > 0.9 ? 'confidence-high' : 
+                              part.confidence > 0.7 ? 'confidence-medium' : 'confidence-low';
+        
+        row.innerHTML = `
+            <td><input type="text" value="${part.schematicNumber}" onchange="updatePartData(${index}, 'schematicNumber', this.value)" readonly></td>
+            <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="Enter SKU"></td>
+            <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="Qty" min="1"></td>
+            <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="Parent SKU"></td>
+            <td><span class="confidence-score ${confidenceClass}">${Math.round(part.confidence * 100)}%</span></td>
+            <td><button type="button" class="btn btn-tertiary" onclick="removePartRow(${index})"><i data-feather="trash-2"></i></button></td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Re-initialize feather icons
+    feather.replace();
+}
+
+function updatePartData(index, field, value) {
+    if (partsData[index]) {
+        partsData[index][field] = value;
+    }
+}
+
+function addPartRow() {
+    const newNumber = String(partsData.length + 1);
+    partsData.push({
+        schematicNumber: newNumber,
+        partSku: '',
+        quantity: '',
+        parentSku: '',
+        confidence: 1.0 // Manual entries have 100% confidence
+    });
+    
+    updatePartsTable();
+}
+
+function removePartRow(index) {
+    partsData.splice(index, 1);
+    updatePartsTable();
+}
+
+// Parts list upload (mock OCR)
+function uploadPartsList() {
+    document.getElementById('partsListFile').click();
+}
+
+function handlePartsListUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Mock OCR processing
+    setTimeout(() => {
+        // Simulate extracted data from OCR
+        const ocrData = [
+            { schematicNumber: '1', partSku: 'OCR-ABC-123', quantity: '2', parentSku: '', confidence: 0.85 },
+            { schematicNumber: '2', partSku: 'OCR-DEF-456', quantity: '1', parentSku: 'OCR-ABC-123', confidence: 0.91 },
+            { schematicNumber: '3', partSku: 'OCR-GHI-789', quantity: '3', parentSku: '', confidence: 0.78 }
+        ];
+        
+        // Merge with existing data or replace
+        if (confirm('OCR processing complete. Replace existing parts data with extracted data?')) {
+            partsData = ocrData;
+            updatePartsTable();
+        }
+        
+        alert('Parts list processed successfully!');
+    }, 2000);
+    
+    alert('Processing parts list with OCR... Please wait.');
+}
+
+// Settings functionality
+function rescanImage() {
+    if (confirm('Re-scanning will clear all existing parts data. Are you sure?')) {
+        scanForNumbers();
+        alert('Image re-scanned successfully!');
+    }
+}
+
+function deleteSchematicFromModal() {
+    if (currentSchematicId && confirm('Are you sure you want to delete this schematic? This action cannot be undone.')) {
+        deleteSchematic(currentSchematicId);
+        closeSchematicModal();
+    }
+}
+
+// Form submission
+function handleSchematicSubmit(event) {
     event.preventDefault();
     
-    const form = event.target;
-    const formData = new FormData(form);
+    const name = document.getElementById('schematicName').value;
+    const brand = document.getElementById('schematicBrand').value;
+    const model = document.getElementById('schematicModel').value;
+    const previewImg = document.getElementById('previewImage');
     
+    if (!brand || !model) {
+        alert('Please select both brand and model.');
+        return;
+    }
+    
+    if (!previewImg.src) {
+        alert('Please upload an image.');
+        return;
+    }
+    
+    const schematicData = {
+        name: name,
+        image: previewImg.src,
+        imageSize: '2048x1536', // Mock size
+        associatedModels: [`${brand} ${model}`],
+        partCount: partsData.length,
+        needsAttention: partsData.some(part => !part.partSku || part.confidence < 0.8),
+        lastEditedBy: 'current.user',
+        lastEditedDate: new Date(),
+        departments: selectedDepartments,
+        parts: partsData
+    };
+    
+    if (isEditMode) {
+        updateSchematic(currentSchematicId, schematicData);
+    } else {
+        addNewSchematic(schematicData);
+    }
+    
+    closeSchematicModal();
+    renderData();
+    updatePagination();
+}
+
+function addNewSchematic(data) {
     const newSchematic = {
         id: Math.max(...dummyData.map(item => item.id)) + 1,
-        name: document.getElementById('schematicName').value,
-        image: document.getElementById('schematicImage').value,
-        imageSize: '2.0 MB', // Default size
-        associatedModels: document.getElementById('schematicModels').value.split(',').map(s => s.trim()).filter(s => s),
-        partCount: parseInt(document.getElementById('schematicPartCount').value),
-        needsAttention: document.getElementById('schematicNeedsAttention').checked,
-        lastEditedBy: 'current.user',
-        lastEditedDate: new Date()
+        ...data
     };
     
     dummyData.unshift(newSchematic);
     currentData = [...dummyData];
-    
-    closeAddSchematicModal();
-    renderData();
-    updatePagination();
-    
     alert('Schematic added successfully!');
 }
 
-// Edit schematic (placeholder)
-function editSchematic(id) {
-    const schematic = dummyData.find(item => item.id === id);
-    if (schematic) {
-        alert(`Edit functionality would open for: ${schematic.name}`);
-        // In a real application, this would open an edit modal or navigate to an edit page
+function updateSchematic(id, data) {
+    const index = dummyData.findIndex(item => item.id === id);
+    if (index > -1) {
+        dummyData[index] = { ...dummyData[index], ...data };
+        currentData = [...dummyData];
+        alert('Schematic updated successfully!');
     }
+}
+
+// Edit schematic
+function editSchematic(id) {
+    openSchematicModal(id);
 }
 
 // Delete schematic
@@ -509,15 +956,15 @@ function formatDate(date) {
 
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
-    const modal = document.getElementById('addSchematicModal');
+    const modal = document.getElementById('schematicModal');
     if (event.target === modal) {
-        closeAddSchematicModal();
+        closeSchematicModal();
     }
 });
 
 // Handle escape key to close modal
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeAddSchematicModal();
+        closeSchematicModal();
     }
 });
