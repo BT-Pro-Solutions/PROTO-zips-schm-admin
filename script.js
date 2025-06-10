@@ -481,6 +481,9 @@ function openSchematicModal(id = null) {
     modal.classList.add('active');
     expandSection('identity');
     
+    // Setup drag and drop functionality
+    setupDragAndDrop();
+    
     // Update department tags display
     updateDepartmentTags();
 }
@@ -587,6 +590,11 @@ function handleDepartmentInput(event) {
         return;
     }
     
+    if (event.key === 'Escape') {
+        hideDepartmentSuggestions();
+        return;
+    }
+    
     if (value.length > 0) {
         showDepartmentSuggestions(value);
     } else {
@@ -595,8 +603,9 @@ function handleDepartmentInput(event) {
 }
 
 function addDepartment(department) {
-    if (!selectedDepartments.includes(department)) {
-        selectedDepartments.push(department);
+    const normalizedDept = department.toLowerCase().trim();
+    if (normalizedDept && !selectedDepartments.includes(normalizedDept)) {
+        selectedDepartments.push(normalizedDept);
         updateDepartmentTags();
     }
 }
@@ -628,7 +637,7 @@ function updateDepartmentTags() {
 
 function showDepartmentSuggestions(filter) {
     const suggestions = departmentSuggestions.filter(dept => 
-        dept.includes(filter) && !selectedDepartments.includes(dept)
+        dept.toLowerCase().includes(filter) && !selectedDepartments.includes(dept.toLowerCase())
     );
     
     const container = document.getElementById('departmentSuggestions');
@@ -656,6 +665,16 @@ function hideDepartmentSuggestions() {
     document.getElementById('departmentSuggestions').style.display = 'none';
 }
 
+// Close suggestions when clicking outside
+document.addEventListener('click', function(event) {
+    const suggestionsContainer = document.getElementById('departmentSuggestions');
+    const departmentInput = document.getElementById('schematicDepartment');
+    
+    if (suggestionsContainer && !suggestionsContainer.contains(event.target) && event.target !== departmentInput) {
+        hideDepartmentSuggestions();
+    }
+});
+
 // Brand and model handling
 function handleBrandChange() {
     const brandSelect = document.getElementById('schematicBrand');
@@ -682,6 +701,10 @@ function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    processImageFile(file);
+}
+
+function processImageFile(file) {
     // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please upload an image file.');
@@ -703,6 +726,52 @@ function handleImageUpload(event) {
         img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+}
+
+// Add drag and drop functionality
+function setupDragAndDrop() {
+    const uploadContainer = document.querySelector('.file-upload-container');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, unhighlight, false);
+    });
+    
+    uploadContainer.addEventListener('drop', handleDrop, false);
+    
+    // Make the container clickable
+    uploadContainer.addEventListener('click', () => {
+        document.getElementById('schematicImageFile').click();
+    });
+}
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+function highlight(e) {
+    e.currentTarget.classList.add('drag-over');
+}
+
+function unhighlight(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        processImageFile(files[0]);
+    }
 }
 
 function showImagePreview(imageSrc) {
@@ -860,18 +929,40 @@ function deleteSchematicFromModal() {
 function handleSchematicSubmit(event) {
     event.preventDefault();
     
-    const name = document.getElementById('schematicName').value;
+    const name = document.getElementById('schematicName').value.trim();
     const brand = document.getElementById('schematicBrand').value;
     const model = document.getElementById('schematicModel').value;
     const previewImg = document.getElementById('previewImage');
     
-    if (!brand || !model) {
-        alert('Please select both brand and model.');
-        return;
+    // Validation
+    const errors = [];
+    
+    if (!name) {
+        errors.push('Schematic name is required.');
     }
     
-    if (!previewImg.src) {
-        alert('Please upload an image.');
+    if (selectedDepartments.length === 0) {
+        errors.push('At least one department must be selected.');
+    }
+    
+    if (!brand) {
+        errors.push('Brand must be selected.');
+    }
+    
+    if (!model) {
+        errors.push('Model must be selected.');
+    }
+    
+    if (!previewImg.src || previewImg.src === '') {
+        errors.push('Schematic image must be uploaded.');
+    }
+    
+    if (partsData.length === 0) {
+        errors.push('At least one part must be added to the parts table.');
+    }
+    
+    if (errors.length > 0) {
+        alert('Please fix the following errors:\n\n' + errors.join('\n'));
         return;
     }
     
@@ -954,17 +1045,31 @@ function formatDate(date) {
     });
 }
 
-// Close modal when clicking outside
+// Close modal when clicking outside or handle other clicks
 document.addEventListener('click', function(event) {
     const modal = document.getElementById('schematicModal');
+    const suggestionsContainer = document.getElementById('departmentSuggestions');
+    const departmentInput = document.getElementById('schematicDepartment');
+    
+    // Close modal when clicking outside
     if (event.target === modal) {
         closeSchematicModal();
+        return;
+    }
+    
+    // Close suggestions when clicking outside (only if elements exist)
+    if (suggestionsContainer && departmentInput && 
+        !suggestionsContainer.contains(event.target) && event.target !== departmentInput) {
+        hideDepartmentSuggestions();
     }
 });
 
 // Handle escape key to close modal
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeSchematicModal();
+        const modal = document.getElementById('schematicModal');
+        if (modal && modal.classList.contains('active')) {
+            closeSchematicModal();
+        }
     }
 });
