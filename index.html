@@ -4,18 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schematics Admin - PROTO Zips</title>
-    <link rel="stylesheet" href="styles.css?v=1.0.1">
+    <link rel="stylesheet" href="styles.css?v=1.0.2">
     <!-- Feather Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/feather.min.css">
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>Schematics Admin</h1>
-            <button class="btn btn-primary" onclick="openSchematicModal()">
-                <i data-feather="plus"></i>
-                Add Schematic
-            </button>
+            <div class="header-left">
+                <h1>Schematics Admin</h1>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-secondary" onclick="openBrandModelManager()">
+                    <i data-feather="settings"></i>
+                    Brands & Models
+                </button>
+                <button class="btn btn-primary" onclick="openSchematicModal()">
+                    <i data-feather="plus"></i>
+                    Add Schematic
+                </button>
+            </div>
         </header>
 
         <div class="controls">
@@ -27,7 +35,7 @@
             </div>
             
             <div class="controls-right">
-                <i data-feather="filter" class="filter-icon"></i>
+                <i data-feather="eye" class="filter-icon"></i>
                 <select id="modelFilter" onchange="handleModelFilter()">
                     <option value="all">All Models</option>
                     <option value="Jerr-Dan">Jerr-Dan</option>
@@ -35,96 +43,50 @@
                     <option value="Miller Industries">Miller Industries</option>
                 </select>
                 
-                <select id="sortBy" onchange="handleSort()">
-                    <option value="recent">Recently Updated</option>
-                    <option value="name">Name A-Z</option>
-                    <option value="attention">Needs Review</option>
+                <i data-feather="image" class="filter-icon"></i>
+                <select id="thumbnailSize" onchange="handleThumbnailSize()">
+                    <option value="small">Small</option>
+                    <option value="large">Large</option>
                 </select>
-                
-                <div class="view-toggle">
-                    <button class="btn btn-secondary toggle-btn active" onclick="toggleView('table')" id="tableViewBtn">
-                        <i data-feather="list"></i>
-                    </button>
-                    <button class="btn btn-secondary toggle-btn" onclick="toggleView('grid')" id="gridViewBtn">
-                        <i data-feather="grid"></i>
-                    </button>
-                </div>
             </div>
         </div>
 
         <div class="content">
-            <!-- Table View -->
-            <div id="tableView" class="view-container active">
-                <div class="table-container">
-                    <table class="schematics-table">
-                        <thead>
-                            <tr>
-                                <th onclick="sortTable('needsAttention')">
-                                    <i data-feather="chevron-down"></i>
-                                </th>
-                                <th>
-                                    Image
-                                </th>
-                                <th onclick="sortTable('name')">
-                                    Name <i data-feather="chevron-down"></i>
-                                </th>
-                                <th onclick="sortTable('lastEditedDate')">
-                                    Last Edited <i data-feather="chevron-down"></i>
-                                </th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="schematicsTableBody">
-                            <!-- Data will be populated by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="pagination">
-                    <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtn">
-                        <i data-feather="chevron-left"></i>
-                        Previous
-                    </button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtn">
-                        Next
-                        <i data-feather="chevron-right"></i>
-                    </button>
-                </div>
+            <div class="table-container">
+                <table class="schematics-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('needsAttention')">
+                                <i data-feather="chevron-down"></i>
+                            </th>
+                            <th>
+                                Image
+                            </th>
+                            <th onclick="sortTable('name')">
+                                Name <i data-feather="chevron-down"></i>
+                            </th>
+                            <th onclick="sortTable('lastEditedDate')">
+                                Last Edited <i data-feather="chevron-down"></i>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schematicsTableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
             </div>
-
-            <!-- Grid View -->
-            <div id="gridView" class="view-container">
-                <div class="grid-container" id="schematicsGrid">
-                    <!-- Grid items will be populated by JavaScript -->
-                </div>
-                
-                <div class="pagination">
-                    <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtnGrid">
-                        <i data-feather="chevron-left"></i>
-                        Previous
-                    </button>
-                    <span id="pageInfoGrid">Page 1 of 1</span>
-                    <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtnGrid">
-                        Next
-                        <i data-feather="chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Image Viewing Modal -->
-    <div id="imageViewModal" class="modal">
-        <div class="modal-content image-view-modal">
-            <div class="modal-header">
-                <h2 id="imageViewTitle">View Schematic</h2>
-                <button class="close-btn" onclick="closeImageViewModal()">
-                    <i data-feather="x"></i>
+            
+            <div class="pagination">
+                <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtn">
+                    <i data-feather="chevron-left"></i>
+                    Previous
                 </button>
-            </div>
-            <div class="image-view-container">
-                <img id="imageViewImg" src="" alt="Schematic view">
+                <span id="pageInfo">Page 1 of 1</span>
+                <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtn">
+                    Next
+                    <i data-feather="chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -256,9 +218,48 @@
         </div>
     </div>
 
+    <!-- Brand & Model Management Modal -->
+    <div id="brandModelModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Manage Brands & Models</h2>
+                <button class="close-btn" onclick="closeBrandModelModal()">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="brand-model-manager">
+                <div class="manager-header">
+                    <button class="btn btn-primary" onclick="addNewBrand()">
+                        <i data-feather="plus"></i>
+                        Add Brand
+                    </button>
+                </div>
+                
+                <div class="brands-list" id="brandsList">
+                    <!-- Brands will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewing Modal -->
+    <div id="imageViewModal" class="modal">
+        <div class="modal-content image-view-modal">
+            <div class="modal-header">
+                <h2 id="imageViewTitle">View Schematic</h2>
+                <button class="close-btn" onclick="closeImageViewModal()">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="image-view-container">
+                <img id="imageViewImg" src="" alt="Schematic view">
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="script.js?v=1.0.1"></script>
+    <script src="script.js?v=1.0.2"></script>
     <script>
         // Initialize Feather icons
         feather.replace();

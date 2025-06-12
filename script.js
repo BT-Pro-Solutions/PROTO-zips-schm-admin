@@ -125,7 +125,6 @@ const dummyData = [
 
 // Global State
 let currentData = [...dummyData];
-let currentView = 'table';
 let currentPage = 1;
 let itemsPerPage = 5;
 let sortOrder = 'asc';
@@ -201,9 +200,87 @@ function hideAllToasts() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    renderData();
-    updatePagination();
+    console.log('DOM Content Loaded - Initializing application');
+    
+    try {
+        loadSortState();
+        console.log('Sort state loaded');
+        
+        loadThumbnailSize();
+        console.log('Thumbnail size loaded');
+        
+        renderData();
+        console.log('Data rendered');
+        
+        updatePagination();
+        console.log('Pagination updated');
+        
+        console.log('Application initialization complete');
+    } catch (error) {
+        console.error('Error during application initialization:', error);
+    }
 });
+
+// Load sort state from localStorage
+function loadSortState() {
+    const savedSortColumn = localStorage.getItem('schematicsAdmin_sortColumn');
+    const savedSortOrder = localStorage.getItem('schematicsAdmin_sortOrder');
+    
+    if (savedSortColumn && savedSortOrder) {
+        sortColumn = savedSortColumn;
+        sortOrder = savedSortOrder;
+        
+        // Apply the saved sort to the data
+        sortTable(sortColumn, false); // false to skip saving again
+    }
+}
+
+// Save sort state to localStorage
+function saveSortState() {
+    localStorage.setItem('schematicsAdmin_sortColumn', sortColumn);
+    localStorage.setItem('schematicsAdmin_sortOrder', sortOrder);
+}
+
+// Load thumbnail size from localStorage
+function loadThumbnailSize() {
+    const savedSize = localStorage.getItem('schematicsAdmin_thumbnailSize') || 'small';
+    const thumbnailSelect = document.getElementById('thumbnailSize');
+    
+    if (thumbnailSelect) {
+        thumbnailSelect.value = savedSize;
+    }
+    
+    applyThumbnailSize(savedSize);
+}
+
+// Handle thumbnail size change
+function handleThumbnailSize() {
+    const thumbnailSelect = document.getElementById('thumbnailSize');
+    
+    if (!thumbnailSelect) {
+        console.error('Thumbnail size select element not found');
+        return;
+    }
+    
+    const size = thumbnailSelect.value;
+    localStorage.setItem('schematicsAdmin_thumbnailSize', size);
+    applyThumbnailSize(size);
+}
+
+// Apply thumbnail size class to table
+function applyThumbnailSize(size) {
+    const table = document.querySelector('.schematics-table');
+    
+    if (!table) {
+        console.error('Schematics table not found');
+        return;
+    }
+    
+    table.classList.remove('small-thumbnails', 'large-thumbnails');
+    if (size !== 'default') {
+        table.classList.add(size + '-thumbnails');
+    }
+}
 
 // Search functionality
 function handleSearch() {
@@ -241,36 +318,18 @@ function handleModelFilter() {
     updatePagination();
 }
 
-// Sort functionality
-function handleSort() {
-    const sortBy = document.getElementById('sortBy').value;
-    
-    switch (sortBy) {
-        case 'recent':
-            currentData.sort((a, b) => new Date(b.lastEditedDate) - new Date(a.lastEditedDate));
-            break;
-        case 'name':
-            currentData.sort((a, b) => a.name.localeCompare(b.name));
-            break;
-        case 'attention':
-            currentData.sort((a, b) => {
-                if (a.needsAttention && !b.needsAttention) return -1;
-                if (!a.needsAttention && b.needsAttention) return 1;
-                return 0;
-            });
-            break;
-    }
-    
-    renderData();
-}
-
 // Table column sorting
-function sortTable(column) {
+function sortTable(column, shouldSave = true) {
     if (sortColumn === column) {
         sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
         sortColumn = column;
         sortOrder = 'asc';
+    }
+    
+    // Save sort state to localStorage
+    if (shouldSave) {
+        saveSortState();
     }
     
     // Update header classes for visual indication
@@ -314,7 +373,7 @@ function sortTable(column) {
 function updateSortHeaders() {
     // Remove all sort classes from headers
     document.querySelectorAll('.schematics-table th').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc');
+        th.classList.remove('sort-asc', 'sort-desc', 'sort-active');
     });
     
     // Add appropriate class to current sort column
@@ -325,24 +384,10 @@ function updateSortHeaders() {
             const onclickValue = header.getAttribute('onclick');
             if (onclickValue && onclickValue.includes(`'${sortColumn}'`)) {
                 header.classList.add('sort-' + sortOrder);
+                header.classList.add('sort-active');
             }
         });
     }
-}
-
-// View toggle functionality
-function toggleView(view) {
-    currentView = view;
-    
-    // Update active button
-    document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(view + 'ViewBtn').classList.add('active');
-    
-    // Show/hide views
-    document.querySelectorAll('.view-container').forEach(container => container.classList.remove('active'));
-    document.getElementById(view + 'View').classList.add('active');
-    
-    renderData();
 }
 
 // Pagination
@@ -367,33 +412,37 @@ function updatePagination() {
     const totalPages = Math.ceil(currentData.length / itemsPerPage);
     const pageInfo = `Page ${currentPage} of ${totalPages}`;
     
-    document.getElementById('pageInfo').textContent = pageInfo;
-    document.getElementById('pageInfoGrid').textContent = pageInfo;
+    const pageInfoElement = document.getElementById('pageInfo');
+    if (pageInfoElement) {
+        pageInfoElement.textContent = pageInfo;
+    }
     
-    const prevBtns = [document.getElementById('prevBtn'), document.getElementById('prevBtnGrid')];
-    const nextBtns = [document.getElementById('nextBtn'), document.getElementById('nextBtnGrid')];
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
     
-    prevBtns.forEach(btn => {
-        btn.disabled = currentPage === 1;
-    });
+    if (prevBtn) {
+        prevBtn.disabled = currentPage === 1;
+    }
     
-    nextBtns.forEach(btn => {
-        btn.disabled = currentPage === totalPages || totalPages === 0;
-    });
+    if (nextBtn) {
+        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
 }
 
 // Render data based on current view
 function renderData() {
-    if (currentView === 'table') {
-        renderTableView();
-    } else {
-        renderGridView();
-    }
+    renderTableView();
 }
 
 // Render table view
 function renderTableView() {
     const tbody = document.getElementById('schematicsTableBody');
+    
+    if (!tbody) {
+        console.error('Table body element not found. Make sure the element with ID "schematicsTableBody" exists.');
+        return;
+    }
+    
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const pageData = currentData.slice(startIndex, endIndex);
@@ -413,9 +462,9 @@ function renderTableView() {
             <td>
                 ${item.needsAttention ? '<span class="status-icon"><i data-feather="alert-triangle"></i><div class="tooltip">Needs Review</div></span>' : ''}
             </td>
-            <td>
-                <img src="${item.image}" alt="${item.name}" class="clickable-image" onclick="openImageView('${item.image}', '${item.name}')" /><br>
-                <small class="${imageSizeClass}">${item.imageSize}</small>
+            <td class="${imageSizeClass}">
+                <img src="${item.image}" alt="${item.name}" class="clickable-image" onclick="openImageView('${item.image}', '${item.name}')" />
+                ${isLowRes ? `<small>Low Res.</small>` : ''}
             </td>
             <td>
                 <strong>${item.name}</strong><br>
@@ -447,55 +496,6 @@ function renderTableView() {
     
     // Update sort header indicators
     updateSortHeaders();
-}
-
-// Render grid view
-function renderGridView() {
-    const grid = document.getElementById('schematicsGrid');
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const pageData = currentData.slice(startIndex, endIndex);
-    
-    grid.innerHTML = '';
-    
-    pageData.forEach(item => {
-        const gridItem = document.createElement('div');
-        gridItem.className = 'grid-item';
-        gridItem.innerHTML = `
-            <div class="grid-item-image">
-                <img src="${item.image}" alt="${item.name}" />
-            </div>
-            <div class="grid-item-content">
-                <h3 class="grid-item-title">${item.name}</h3>
-                <div class="grid-item-details">
-                    <div class="grid-item-models">
-                        <strong>Models:</strong> ${item.associatedModels.join(', ')}
-                    </div>
-                    <div><strong>Parts:</strong> ${item.partCount}</div>
-                    <div><strong>Size:</strong> ${item.imageSize}</div>
-                    <div><strong>Last edited:</strong> ${formatDate(item.lastEditedDate)} by ${item.lastEditedBy}</div>
-                </div>
-                <div class="grid-item-actions">
-                    <span class="status-badge ${item.needsAttention ? 'status-attention' : 'status-good'}">
-                        <i data-feather="${item.needsAttention ? 'alert-triangle' : 'check-circle'}"></i>
-                        ${item.needsAttention ? 'Needs Attention' : 'Good'}
-                    </span>
-                    <div class="action-buttons">
-                        <button class="btn btn-tertiary" onclick="editSchematic(${item.id})">
-                            <i data-feather="edit"></i>
-                        </button>
-                        <button class="btn btn-tertiary" onclick="deleteSchematic(${item.id})">
-                            <i data-feather="trash-2"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        grid.appendChild(gridItem);
-    });
-    
-    // Re-initialize Feather icons
-    feather.replace();
 }
 
 // Global state for modal
@@ -686,6 +686,12 @@ function removeDepartment(department) {
 
 function updateDepartmentTags() {
     const container = document.getElementById('departmentTags');
+    
+    // If the element doesn't exist, just return (department functionality may not be present)
+    if (!container) {
+        return;
+    }
+    
     container.innerHTML = '';
     
     selectedDepartments.forEach(dept => {
@@ -710,6 +716,12 @@ function showDepartmentSuggestions(filter) {
     );
     
     const container = document.getElementById('departmentSuggestions');
+    
+    // If the element doesn't exist, just return
+    if (!container) {
+        return;
+    }
+    
     container.innerHTML = '';
     
     if (suggestions.length > 0) {
@@ -719,7 +731,10 @@ function showDepartmentSuggestions(filter) {
             div.textContent = suggestion;
             div.onclick = () => {
                 addDepartment(suggestion);
-                document.getElementById('schematicDepartment').value = '';
+                const departmentInput = document.getElementById('schematicDepartment');
+                if (departmentInput) {
+                    departmentInput.value = '';
+                }
                 hideDepartmentSuggestions();
             };
             container.appendChild(div);
@@ -731,15 +746,25 @@ function showDepartmentSuggestions(filter) {
 }
 
 function hideDepartmentSuggestions() {
-    document.getElementById('departmentSuggestions').style.display = 'none';
+    const container = document.getElementById('departmentSuggestions');
+    if (container) {
+        container.style.display = 'none';
+    }
 }
 
 // Close modal when clicking outside or handle other clicks
 document.addEventListener('click', function(event) {
     const schematicModal = document.getElementById('schematicModal');
     const imageViewModal = document.getElementById('imageViewModal');
+    const brandModelModal = document.getElementById('brandModelModal');
     const suggestionsContainer = document.getElementById('departmentSuggestions');
     const departmentInput = document.getElementById('schematicDepartment');
+    
+    // Close brand model modal when clicking outside
+    if (event.target === brandModelModal) {
+        closeBrandModelModal();
+        return;
+    }
     
     // Close schematic modal when clicking outside
     if (event.target === schematicModal) {
@@ -765,8 +790,11 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         const schematicModal = document.getElementById('schematicModal');
         const imageViewModal = document.getElementById('imageViewModal');
+        const brandModelModal = document.getElementById('brandModelModal');
         
-        if (schematicModal && schematicModal.classList.contains('active')) {
+        if (brandModelModal && brandModelModal.classList.contains('active')) {
+            closeBrandModelModal();
+        } else if (schematicModal && schematicModal.classList.contains('active')) {
             closeSchematicModal();
         } else if (imageViewModal && imageViewModal.classList.contains('active')) {
             closeImageViewModal();
@@ -964,9 +992,9 @@ function updatePartsTable() {
         
         row.innerHTML = `
             <td><input type="text" value="${part.schematicNumber}" onchange="updatePartData(${index}, 'schematicNumber', this.value)" readonly class="input-readonly"></td>
-            <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="Enter SKU" class="input-small"></td>
-            <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="Qty" min="1" class="input-qty"></td>
-            <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="Parent SKU" class="input-small"></td>
+            <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="-" class="input-small"></td>
+            <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="0" min="1" class="input-qty"></td>
+            <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="-" class="input-small"></td>
             <td>
                 <div class="position-container">
                     <small class="position-display">X:${part.positionX || 0}% Y:${part.positionY || 0}%</small>
@@ -1040,8 +1068,22 @@ function handleSchematicClick(event) {
     const rect = imagePreview.getBoundingClientRect();
     
     // Calculate percentage position
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    let x = ((event.clientX - rect.left) / rect.width) * 100;
+    let y = ((event.clientY - rect.top) / rect.height) * 100;
+    
+    // Offset to center the overlay (30px overlay size)
+    // Calculate the offset as a percentage of the image size
+    const overlaySize = 30; // pixels
+    const xOffset = (overlaySize / 2 / rect.width) * 100;
+    const yOffset = (overlaySize / 2 / rect.height) * 100;
+    
+    // Adjust position to center the overlay on the click point
+    x = x - xOffset;
+    y = y - yOffset;
+    
+    // Ensure the overlay stays within bounds
+    x = Math.max(0, Math.min(100 - (overlaySize / rect.width) * 100, x));
+    y = Math.max(0, Math.min(100 - (overlaySize / rect.height) * 100, y));
     
     // Update the part data
     if (currentPositionIndex >= 0 && partsData[currentPositionIndex]) {
@@ -1257,4 +1299,458 @@ function openImageView(imageSrc, imageName) {
 function closeImageViewModal() {
     const modal = document.getElementById('imageViewModal');
     modal.classList.remove('active');
+}
+
+// Brand & Model Management System
+let brandModelManager = {
+    brands: {
+        'jerr-dan': {
+            name: 'Jerr-Dan',
+            models: ['Carrier 16', 'Carrier 20', 'MPL-NG', 'Quick Swing', 'Rotator Series']
+        },
+        'century': {
+            name: 'Century',
+            models: ['10 Series', '12 Series', 'Steel Carrier', 'Heavy Duty', 'Vulcan 810']
+        },
+        'miller': {
+            name: 'Miller Industries',
+            models: ['Model 9000', 'Model 8000', 'Century 440', 'Vulcan', 'Challenger 3212']
+        }
+    },
+    
+    // Get all brands
+    getAllBrands() {
+        return Object.keys(this.brands).map(key => ({
+            id: key,
+            name: this.brands[key].name,
+            models: this.brands[key].models
+        }));
+    },
+    
+    // Add new brand
+    addBrand(id, name) {
+        if (!this.brands[id]) {
+            this.brands[id] = {
+                name: name,
+                models: []
+            };
+            return true;
+        }
+        return false;
+    },
+    
+    // Update brand name
+    updateBrand(id, newName) {
+        if (this.brands[id]) {
+            this.brands[id].name = newName;
+            return true;
+        }
+        return false;
+    },
+    
+    // Delete brand
+    deleteBrand(id) {
+        if (this.brands[id]) {
+            delete this.brands[id];
+            return true;
+        }
+        return false;
+    },
+    
+    // Add model to brand
+    addModel(brandId, modelName) {
+        if (this.brands[brandId] && !this.brands[brandId].models.includes(modelName)) {
+            this.brands[brandId].models.push(modelName);
+            return true;
+        }
+        return false;
+    },
+    
+    // Update model name
+    updateModel(brandId, oldName, newName) {
+        if (this.brands[brandId]) {
+            const index = this.brands[brandId].models.indexOf(oldName);
+            if (index > -1) {
+                this.brands[brandId].models[index] = newName;
+                return true;
+            }
+        }
+        return false;
+    },
+    
+    // Delete model
+    deleteModel(brandId, modelName) {
+        if (this.brands[brandId]) {
+            const index = this.brands[brandId].models.indexOf(modelName);
+            if (index > -1) {
+                this.brands[brandId].models.splice(index, 1);
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+// Brand & Model Manager Modal Functions
+function openBrandModelManager() {
+    const modal = document.getElementById('brandModelModal');
+    modal.classList.add('active');
+    renderBrandsList();
+}
+
+function closeBrandModelModal() {
+    const modal = document.getElementById('brandModelModal');
+    modal.classList.remove('active');
+    
+    // Update the brand/model data in the main form
+    updateBrandModelData();
+}
+
+function updateBrandModelData() {
+    // Update the global brandModelData object used in the main form
+    Object.keys(brandModelManager.brands).forEach(brandId => {
+        brandModelData[brandId] = brandModelManager.brands[brandId].models;
+    });
+}
+
+function renderBrandsList() {
+    const container = document.getElementById('brandsList');
+    const brands = brandModelManager.getAllBrands();
+    
+    if (brands.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-feather="package"></i>
+                <p>No brands configured yet.</p>
+                <p>Click "Add Brand" to get started.</p>
+            </div>
+        `;
+        feather.replace();
+        return;
+    }
+    
+    container.innerHTML = brands.map(brand => `
+        <div class="brand-item" id="brand-${brand.id}">
+            <div class="brand-header" onclick="toggleBrand('${brand.id}')">
+                <div class="brand-info">
+                    <h3 class="brand-name" id="brand-name-${brand.id}">${brand.name}</h3>
+                    <div class="brand-name-edit" id="brand-name-edit-${brand.id}" style="display: none;">
+                        <div class="inline-form">
+                            <input type="text" value="${brand.name}" id="brand-name-input-${brand.id}">
+                            <div class="form-actions-inline">
+                                <button class="btn-icon" onclick="event.stopPropagation(); saveBrandName('${brand.id}')" title="Save">
+                                    <i data-feather="check"></i>
+                                </button>
+                                <button class="btn-icon" onclick="event.stopPropagation(); cancelBrandEdit('${brand.id}')" title="Cancel">
+                                    <i data-feather="x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="brand-model-count">${brand.models.length} models</span>
+                </div>
+                <div class="brand-actions">
+                    <button class="btn-icon" onclick="event.stopPropagation(); editBrand('${brand.id}')" title="Edit brand">
+                        <i data-feather="edit-2"></i>
+                    </button>
+                    <button class="btn-icon danger" onclick="event.stopPropagation(); deleteBrandConfirm('${brand.id}')" title="Delete brand">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                    <i data-feather="chevron-down" class="brand-toggle"></i>
+                </div>
+            </div>
+            <div class="models-container">
+                <div class="models-header">
+                    <h4>Models</h4>
+                    <button class="btn btn-tertiary" onclick="addNewModel('${brand.id}')">
+                        <i data-feather="plus"></i>
+                        Add Model
+                    </button>
+                </div>
+                <div class="models-list">
+                    ${brand.models.length > 0 ? 
+                        brand.models.map(model => `
+                            <div class="model-item" id="model-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                <span class="model-name" id="model-name-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">${model}</span>
+                                <div class="model-name-edit" id="model-name-edit-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}" style="display: none;">
+                                    <div class="inline-form">
+                                        <input type="text" value="${model}" id="model-name-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                        <div class="form-actions-inline">
+                                            <button class="btn-icon" onclick="saveModelName('${brand.id}', '${model}')" title="Save">
+                                                <i data-feather="check"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="cancelModelEdit('${brand.id}', '${model}')" title="Cancel">
+                                                <i data-feather="x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="model-actions">
+                                    <button class="btn-icon" onclick="editModel('${brand.id}', '${model}')" title="Edit model">
+                                        <i data-feather="edit-2"></i>
+                                    </button>
+                                    <button class="btn-icon danger" onclick="deleteModelConfirm('${brand.id}', '${model}')" title="Delete model">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('') : 
+                        '<div class="empty-state"><p>No models added yet.</p></div>'
+                    }
+                    <div class="add-model-form" id="add-model-form-${brand.id}" style="display: none;">
+                        <div class="inline-form">
+                            <input type="text" placeholder="Enter model name..." id="new-model-input-${brand.id}">
+                            <div class="form-actions-inline">
+                                <button class="btn-icon" onclick="saveNewModel('${brand.id}')" title="Add">
+                                    <i data-feather="check"></i>
+                                </button>
+                                <button class="btn-icon" onclick="cancelNewModel('${brand.id}')" title="Cancel">
+                                    <i data-feather="x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add the "Add Brand" form at the end
+    container.innerHTML += `
+        <div class="brand-item" id="add-brand-form" style="display: none;">
+            <div class="brand-header">
+                <div class="brand-info">
+                    <div class="inline-form">
+                        <input type="text" placeholder="Enter brand name..." id="new-brand-input">
+                        <div class="form-actions-inline">
+                            <button class="btn-icon" onclick="saveNewBrand()" title="Add">
+                                <i data-feather="check"></i>
+                            </button>
+                            <button class="btn-icon" onclick="cancelNewBrand()" title="Cancel">
+                                <i data-feather="x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    feather.replace();
+}
+
+function toggleBrand(brandId) {
+    const brandItem = document.getElementById(`brand-${brandId}`);
+    brandItem.classList.toggle('expanded');
+}
+
+function addNewBrand() {
+    // Hide the "Add Brand" button and show the form
+    const addBrandForm = document.getElementById('add-brand-form');
+    addBrandForm.style.display = 'block';
+    
+    // Focus on the input
+    const input = document.getElementById('new-brand-input');
+    input.focus();
+    
+    // Handle Enter key
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveNewBrand();
+        } else if (e.key === 'Escape') {
+            cancelNewBrand();
+        }
+    });
+}
+
+function saveNewBrand() {
+    const input = document.getElementById('new-brand-input');
+    const name = input.value.trim();
+    
+    if (name) {
+        const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        if (brandModelManager.addBrand(id, name)) {
+            showToast(`Brand "${name}" added successfully!`, 'success');
+            renderBrandsList();
+        } else {
+            showToast('Brand already exists!', 'error');
+            input.focus();
+        }
+    } else {
+        input.focus();
+    }
+}
+
+function cancelNewBrand() {
+    const addBrandForm = document.getElementById('add-brand-form');
+    addBrandForm.style.display = 'none';
+    
+    // Clear the input
+    const input = document.getElementById('new-brand-input');
+    input.value = '';
+}
+
+function editBrand(brandId) {
+    const nameDisplay = document.getElementById(`brand-name-${brandId}`);
+    const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
+    const input = document.getElementById(`brand-name-input-${brandId}`);
+    
+    nameDisplay.style.display = 'none';
+    nameEdit.style.display = 'block';
+    input.focus();
+    input.select();
+    
+    // Handle Enter and Escape keys
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveBrandName(brandId);
+        } else if (e.key === 'Escape') {
+            cancelBrandEdit(brandId);
+        }
+    });
+}
+
+function saveBrandName(brandId) {
+    const input = document.getElementById(`brand-name-input-${brandId}`);
+    const newName = input.value.trim();
+    const brand = brandModelManager.brands[brandId];
+    
+    if (newName && newName !== brand.name) {
+        if (brandModelManager.updateBrand(brandId, newName)) {
+            showToast(`Brand updated to "${newName}"!`, 'success');
+            renderBrandsList();
+        }
+    } else {
+        cancelBrandEdit(brandId);
+    }
+}
+
+function cancelBrandEdit(brandId) {
+    const nameDisplay = document.getElementById(`brand-name-${brandId}`);
+    const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
+    const input = document.getElementById(`brand-name-input-${brandId}`);
+    
+    // Reset input value to original
+    const brand = brandModelManager.brands[brandId];
+    input.value = brand.name;
+    
+    nameDisplay.style.display = 'block';
+    nameEdit.style.display = 'none';
+}
+
+function deleteBrandConfirm(brandId) {
+    const brand = brandModelManager.brands[brandId];
+    if (!brand) return;
+    
+    const modelCount = brand.models.length;
+    const message = modelCount > 0 ? 
+        `Are you sure you want to delete "${brand.name}"?\nThis will also delete ${modelCount} model(s).` :
+        `Are you sure you want to delete "${brand.name}"?`;
+    
+    if (confirm(message)) {
+        if (brandModelManager.deleteBrand(brandId)) {
+            renderBrandsList();
+            showToast(`Brand "${brand.name}" deleted successfully!`, 'success');
+        }
+    }
+}
+
+function addNewModel(brandId) {
+    const addForm = document.getElementById(`add-model-form-${brandId}`);
+    const input = document.getElementById(`new-model-input-${brandId}`);
+    
+    addForm.style.display = 'block';
+    input.focus();
+    
+    // Handle Enter and Escape keys
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveNewModel(brandId);
+        } else if (e.key === 'Escape') {
+            cancelNewModel(brandId);
+        }
+    });
+}
+
+function saveNewModel(brandId) {
+    const input = document.getElementById(`new-model-input-${brandId}`);
+    const modelName = input.value.trim();
+    
+    if (modelName) {
+        if (brandModelManager.addModel(brandId, modelName)) {
+            showToast(`Model "${modelName}" added successfully!`, 'success');
+            renderBrandsList();
+        } else {
+            showToast('Model already exists for this brand!', 'error');
+            input.focus();
+        }
+    } else {
+        input.focus();
+    }
+}
+
+function cancelNewModel(brandId) {
+    const addForm = document.getElementById(`add-model-form-${brandId}`);
+    const input = document.getElementById(`new-model-input-${brandId}`);
+    
+    addForm.style.display = 'none';
+    input.value = '';
+}
+
+function editModel(brandId, currentName) {
+    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
+    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelId}`);
+    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelId}`);
+    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+    
+    nameDisplay.style.display = 'none';
+    nameEdit.style.display = 'block';
+    input.focus();
+    input.select();
+    
+    // Handle Enter and Escape keys
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveModelName(brandId, currentName);
+        } else if (e.key === 'Escape') {
+            cancelModelEdit(brandId, currentName);
+        }
+    });
+}
+
+function saveModelName(brandId, currentName) {
+    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
+    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+    const newName = input.value.trim();
+    
+    if (newName && newName !== currentName) {
+        if (brandModelManager.updateModel(brandId, currentName, newName)) {
+            showToast(`Model updated to "${newName}"!`, 'success');
+            renderBrandsList();
+        }
+    } else {
+        cancelModelEdit(brandId, currentName);
+    }
+}
+
+function cancelModelEdit(brandId, currentName) {
+    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
+    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelId}`);
+    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelId}`);
+    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+    
+    // Reset input value to original
+    input.value = currentName;
+    
+    nameDisplay.style.display = 'block';
+    nameEdit.style.display = 'none';
+}
+
+function deleteModelConfirm(brandId, modelName) {
+    if (confirm(`Are you sure you want to delete the model "${modelName}"?`)) {
+        if (brandModelManager.deleteModel(brandId, modelName)) {
+            renderBrandsList();
+            showToast(`Model "${modelName}" deleted successfully!`, 'success');
+        }
+    }
 }
