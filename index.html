@@ -12,7 +12,7 @@
     <div class="container">
         <header class="header">
             <h1>Schematics Admin</h1>
-            <button class="btn btn-primary" onclick="openAddSchematicModal()">
+            <button class="btn btn-primary" onclick="openSchematicModal()">
                 <i data-feather="plus"></i>
                 Add Schematic
             </button>
@@ -116,41 +116,135 @@
         </div>
     </div>
 
-    <!-- Add Schematic Modal -->
-    <div id="addSchematicModal" class="modal">
-        <div class="modal-content">
+    <!-- Add/Edit Schematic Modal -->
+    <div id="schematicModal" class="modal">
+        <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Add New Schematic</h2>
-                <button class="close-btn" onclick="closeAddSchematicModal()">
+                <h2 id="modalTitle">Add New Schematic</h2>
+                <button class="close-btn" onclick="closeSchematicModal()">
                     <i data-feather="x"></i>
                 </button>
             </div>
-            <form id="addSchematicForm" onsubmit="handleAddSchematic(event)">
-                <div class="form-group">
-                    <label for="schematicName">Name:</label>
-                    <input type="text" id="schematicName" required>
+            <form id="schematicForm" onsubmit="handleSchematicSubmit(event)">
+                <!-- Schematic Identity Section -->
+                <div class="section-group">
+                    <div class="section-header" onclick="toggleSection('identity')">
+                        <h3>Schematic Identity</h3>
+                        <i data-feather="chevron-down" class="section-toggle"></i>
+                    </div>
+                    <div class="section-content active" id="identitySection">
+                        <div class="form-group">
+                            <label for="schematicName">Schematic Name:</label>
+                            <input type="text" id="schematicName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="schematicDepartment">Department:</label>
+                            <div class="tag-input-container">
+                                <input type="text" id="schematicDepartment" placeholder="Start typing to add departments..." onkeyup="handleDepartmentInput(event)">
+                                <div class="department-tags" id="departmentTags"></div>
+                                <div class="department-suggestions" id="departmentSuggestions"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="schematicBrand">Brand:</label>
+                            <select id="schematicBrand" onchange="handleBrandChange()" required>
+                                <option value="">Select a brand...</option>
+                                <option value="jerr-dan">Jerr-Dan</option>
+                                <option value="century">Century</option>
+                                <option value="miller">Miller Industries</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schematicModel">Model:</label>
+                            <select id="schematicModel" disabled required>
+                                <option value="">Select a brand first...</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="schematicImage">Image URL:</label>
-                    <input type="url" id="schematicImage" required>
+
+                <!-- Products & Diagram Section -->
+                <div class="section-group">
+                    <div class="section-header" onclick="toggleSection('diagram')">
+                        <h3>Products & Diagram</h3>
+                        <i data-feather="chevron-down" class="section-toggle"></i>
+                    </div>
+                    <div class="section-content" id="diagramSection">
+                        <div class="form-group">
+                            <label for="schematicImageFile">Upload Schematic Image:</label>
+                            <div class="file-upload-container">
+                                <input type="file" id="schematicImageFile" accept="image/*" onchange="handleImageUpload(event)">
+                                <div class="file-upload-text">Click to upload or drag and drop</div>
+                                <div class="file-upload-hint">Minimum size: 800x600 pixels</div>
+                            </div>
+                        </div>
+                        <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                            <div class="image-preview" id="imagePreview">
+                                <img id="previewImage" src="" alt="Schematic preview">
+                                <div class="number-overlays" id="numberOverlays"></div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="scanForNumbers()">
+                                <i data-feather="search"></i>
+                                Scan for Numbers
+                            </button>
+                        </div>
+                        <div class="parts-table-container" id="partsTableContainer" style="display: none;">
+                            <h4>Parts Table</h4>
+                            <div class="table-scroll">
+                                <table class="parts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Schematic Number</th>
+                                            <th>Part SKU</th>
+                                            <th>Quantity</th>
+                                            <th>Parent SKU</th>
+                                            <th>Confidence</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="partsTableBody">
+                                        <!-- Parts will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-tertiary" onclick="addPartRow()">
+                                <i data-feather="plus"></i>
+                                Add Row
+                            </button>
+                            <div class="upload-parts-list">
+                                <button type="button" class="btn btn-secondary" onclick="uploadPartsList()">
+                                    <i data-feather="upload"></i>
+                                    Upload Parts List
+                                </button>
+                                <input type="file" id="partsListFile" accept="image/*,.pdf" style="display: none;" onchange="handlePartsListUpload(event)">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="schematicModels">Associated Models (comma separated):</label>
-                    <input type="text" id="schematicModels" placeholder="Jerr-Dan, Century Steel Carrier">
+
+                <!-- Settings Section (for edit mode only) -->
+                <div class="section-group" id="settingsGroup" style="display: none;">
+                    <div class="section-header" onclick="toggleSection('settings')">
+                        <h3>Settings</h3>
+                        <i data-feather="chevron-down" class="section-toggle"></i>
+                    </div>
+                    <div class="section-content" id="settingsSection">
+                        <div class="settings-actions">
+                            <button type="button" class="btn btn-tertiary" onclick="rescanImage()">
+                                <i data-feather="refresh-cw"></i>
+                                Re-Scan Image
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="deleteSchematicFromModal()">
+                                <i data-feather="trash-2"></i>
+                                Delete Schematic
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="schematicPartCount">Part Count:</label>
-                    <input type="number" id="schematicPartCount" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="schematicNeedsAttention">
-                        Needs Attention
-                    </label>
-                </div>
+
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeAddSchematicModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Schematic</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSchematicModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Add Schematic</button>
                 </div>
             </form>
         </div>
