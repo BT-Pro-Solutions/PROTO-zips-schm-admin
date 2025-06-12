@@ -1436,7 +1436,14 @@ function renderBrandsList() {
                     <h3 class="brand-name" id="brand-name-${brand.id}">${brand.name}</h3>
                     <div class="brand-name-edit" id="brand-name-edit-${brand.id}" style="display: none;">
                         <div class="inline-form">
-                            <input type="text" value="${brand.name}" id="brand-name-input-${brand.id}">
+                            <div class="input-group">
+                                <label class="floating-label">Name</label>
+                                <input type="text" value="${brand.name}" id="brand-name-input-${brand.id}">
+                            </div>
+                            <div class="input-group">
+                                <label class="floating-label">Slug</label>
+                                <input type="text" value="${brand.id}" id="brand-slug-input-${brand.id}">
+                            </div>
                             <div class="form-actions-inline">
                                 <button class="btn-icon" onclick="event.stopPropagation(); saveBrandName('${brand.id}')" title="Save">
                                     <i data-feather="check"></i>
@@ -1474,7 +1481,14 @@ function renderBrandsList() {
                                 <span class="model-name" id="model-name-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">${model}</span>
                                 <div class="model-name-edit" id="model-name-edit-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}" style="display: none;">
                                     <div class="inline-form">
-                                        <input type="text" value="${model}" id="model-name-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                        <div class="input-group">
+                                            <label class="floating-label">Name</label>
+                                            <input type="text" value="${model}" id="model-name-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                        </div>
+                                        <div class="input-group">
+                                            <label class="floating-label">Slug</label>
+                                            <input type="text" value="${model.toLowerCase().replace(/[^a-z0-9]/g, '-')}" id="model-slug-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                        </div>
                                         <div class="form-actions-inline">
                                             <button class="btn-icon" onclick="saveModelName('${brand.id}', '${model}')" title="Save">
                                                 <i data-feather="check"></i>
@@ -1499,7 +1513,14 @@ function renderBrandsList() {
                     }
                     <div class="add-model-form" id="add-model-form-${brand.id}" style="display: none;">
                         <div class="inline-form">
-                            <input type="text" placeholder="Enter model name..." id="new-model-input-${brand.id}">
+                            <div class="input-group">
+                                <label class="floating-label">Name</label>
+                                <input type="text" placeholder="Enter model name..." id="new-model-input-${brand.id}">
+                            </div>
+                            <div class="input-group">
+                                <label class="floating-label">Slug</label>
+                                <input type="text" placeholder="auto-generated" id="new-model-slug-${brand.id}">
+                            </div>
                             <div class="form-actions-inline">
                                 <button class="btn-icon" onclick="saveNewModel('${brand.id}')" title="Add">
                                     <i data-feather="check"></i>
@@ -1521,7 +1542,14 @@ function renderBrandsList() {
             <div class="brand-header">
                 <div class="brand-info">
                     <div class="inline-form">
-                        <input type="text" placeholder="Enter brand name..." id="new-brand-input">
+                        <div class="input-group">
+                            <label class="floating-label">Name</label>
+                            <input type="text" placeholder="Enter brand name..." id="new-brand-input">
+                        </div>
+                        <div class="input-group">
+                            <label class="floating-label">Slug</label>
+                            <input type="text" placeholder="auto-generated" id="new-brand-slug">
+                        </div>
                         <div class="form-actions-inline">
                             <button class="btn-icon" onclick="saveNewBrand()" title="Add">
                                 <i data-feather="check"></i>
@@ -1550,11 +1578,26 @@ function addNewBrand() {
     addBrandForm.style.display = 'block';
     
     // Focus on the input
-    const input = document.getElementById('new-brand-input');
-    input.focus();
+    const nameInput = document.getElementById('new-brand-input');
+    const slugInput = document.getElementById('new-brand-slug');
+    nameInput.focus();
+    
+    // Auto-generate slug from name
+    nameInput.addEventListener('input', function() {
+        const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        slugInput.value = slug;
+    });
     
     // Handle Enter key
-    input.addEventListener('keypress', function(e) {
+    nameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveNewBrand();
+        } else if (e.key === 'Escape') {
+            cancelNewBrand();
+        }
+    });
+    
+    slugInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveNewBrand();
         } else if (e.key === 'Escape') {
@@ -1564,20 +1607,21 @@ function addNewBrand() {
 }
 
 function saveNewBrand() {
-    const input = document.getElementById('new-brand-input');
-    const name = input.value.trim();
+    const nameInput = document.getElementById('new-brand-input');
+    const slugInput = document.getElementById('new-brand-slug');
+    const name = nameInput.value.trim();
+    const slug = slugInput.value.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     
     if (name) {
-        const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        if (brandModelManager.addBrand(id, name)) {
+        if (brandModelManager.addBrand(slug, name)) {
             showToast(`Brand "${name}" added successfully!`, 'success');
             renderBrandsList();
         } else {
-            showToast('Brand already exists!', 'error');
-            input.focus();
+            showToast('Brand slug already exists!', 'error');
+            slugInput.focus();
         }
     } else {
-        input.focus();
+        nameInput.focus();
     }
 }
 
@@ -1585,23 +1629,40 @@ function cancelNewBrand() {
     const addBrandForm = document.getElementById('add-brand-form');
     addBrandForm.style.display = 'none';
     
-    // Clear the input
-    const input = document.getElementById('new-brand-input');
-    input.value = '';
+    // Clear the inputs
+    const nameInput = document.getElementById('new-brand-input');
+    const slugInput = document.getElementById('new-brand-slug');
+    nameInput.value = '';
+    slugInput.value = '';
 }
 
 function editBrand(brandId) {
     const nameDisplay = document.getElementById(`brand-name-${brandId}`);
     const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
-    const input = document.getElementById(`brand-name-input-${brandId}`);
+    const nameInput = document.getElementById(`brand-name-input-${brandId}`);
+    const slugInput = document.getElementById(`brand-slug-input-${brandId}`);
     
     nameDisplay.style.display = 'none';
     nameEdit.style.display = 'block';
-    input.focus();
-    input.select();
+    nameInput.focus();
+    nameInput.select();
+    
+    // Auto-generate slug from name
+    nameInput.addEventListener('input', function() {
+        const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        slugInput.value = slug;
+    });
     
     // Handle Enter and Escape keys
-    input.addEventListener('keypress', function(e) {
+    nameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveBrandName(brandId);
+        } else if (e.key === 'Escape') {
+            cancelBrandEdit(brandId);
+        }
+    });
+    
+    slugInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveBrandName(brandId);
         } else if (e.key === 'Escape') {
@@ -1611,15 +1672,37 @@ function editBrand(brandId) {
 }
 
 function saveBrandName(brandId) {
-    const input = document.getElementById(`brand-name-input-${brandId}`);
-    const newName = input.value.trim();
+    const nameInput = document.getElementById(`brand-name-input-${brandId}`);
+    const slugInput = document.getElementById(`brand-slug-input-${brandId}`);
+    const newName = nameInput.value.trim();
+    const newSlug = slugInput.value.trim();
     const brand = brandModelManager.brands[brandId];
     
-    if (newName && newName !== brand.name) {
-        if (brandModelManager.updateBrand(brandId, newName)) {
-            showToast(`Brand updated to "${newName}"!`, 'success');
-            renderBrandsList();
+    if (newName && (newName !== brand.name || newSlug !== brandId)) {
+        // Check if new slug conflicts with existing brands
+        if (newSlug !== brandId && brandModelManager.brands[newSlug]) {
+            showToast('Brand slug already exists!', 'error');
+            slugInput.focus();
+            return;
         }
+        
+        // If slug changed, we need to create new brand and delete old one
+        if (newSlug !== brandId) {
+            // Create new brand with new slug
+            brandModelManager.addBrand(newSlug, newName);
+            // Copy models to new brand
+            brand.models.forEach(model => {
+                brandModelManager.addModel(newSlug, model);
+            });
+            // Delete old brand
+            brandModelManager.deleteBrand(brandId);
+        } else {
+            // Just update the name
+            brandModelManager.updateBrand(brandId, newName);
+        }
+        
+        showToast(`Brand updated successfully!`, 'success');
+        renderBrandsList();
     } else {
         cancelBrandEdit(brandId);
     }
@@ -1628,11 +1711,13 @@ function saveBrandName(brandId) {
 function cancelBrandEdit(brandId) {
     const nameDisplay = document.getElementById(`brand-name-${brandId}`);
     const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
-    const input = document.getElementById(`brand-name-input-${brandId}`);
+    const nameInput = document.getElementById(`brand-name-input-${brandId}`);
+    const slugInput = document.getElementById(`brand-slug-input-${brandId}`);
     
-    // Reset input value to original
+    // Reset input values to original
     const brand = brandModelManager.brands[brandId];
-    input.value = brand.name;
+    nameInput.value = brand.name;
+    slugInput.value = brandId;
     
     nameDisplay.style.display = 'block';
     nameEdit.style.display = 'none';
@@ -1657,13 +1742,28 @@ function deleteBrandConfirm(brandId) {
 
 function addNewModel(brandId) {
     const addForm = document.getElementById(`add-model-form-${brandId}`);
-    const input = document.getElementById(`new-model-input-${brandId}`);
+    const nameInput = document.getElementById(`new-model-input-${brandId}`);
+    const slugInput = document.getElementById(`new-model-slug-${brandId}`);
     
     addForm.style.display = 'block';
-    input.focus();
+    nameInput.focus();
+    
+    // Auto-generate slug from name
+    nameInput.addEventListener('input', function() {
+        const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        slugInput.value = slug;
+    });
     
     // Handle Enter and Escape keys
-    input.addEventListener('keypress', function(e) {
+    nameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveNewModel(brandId);
+        } else if (e.key === 'Escape') {
+            cancelNewModel(brandId);
+        }
+    });
+    
+    slugInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveNewModel(brandId);
         } else if (e.key === 'Escape') {
@@ -1674,15 +1774,17 @@ function addNewModel(brandId) {
 
 function saveNewModel(brandId) {
     const input = document.getElementById(`new-model-input-${brandId}`);
-    const modelName = input.value.trim();
+    const slugInput = document.getElementById(`new-model-slug-${brandId}`);
+    const name = input.value.trim();
+    const slug = slugInput.value.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     
-    if (modelName) {
-        if (brandModelManager.addModel(brandId, modelName)) {
-            showToast(`Model "${modelName}" added successfully!`, 'success');
+    if (name) {
+        if (brandModelManager.addModel(brandId, name)) {
+            showToast(`Model "${name}" added successfully!`, 'success');
             renderBrandsList();
         } else {
-            showToast('Model already exists for this brand!', 'error');
-            input.focus();
+            showToast('Model already exists!', 'error');
+            slugInput.focus();
         }
     } else {
         input.focus();
@@ -1691,17 +1793,17 @@ function saveNewModel(brandId) {
 
 function cancelNewModel(brandId) {
     const addForm = document.getElementById(`add-model-form-${brandId}`);
-    const input = document.getElementById(`new-model-input-${brandId}`);
-    
     addForm.style.display = 'none';
+    
+    // Clear the input
+    const input = document.getElementById(`new-model-input-${brandId}`);
     input.value = '';
 }
 
-function editModel(brandId, currentName) {
-    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
-    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelId}`);
-    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelId}`);
-    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+function editModel(brandId, modelName) {
+    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
+    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
+    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
     
     nameDisplay.style.display = 'none';
     nameEdit.style.display = 'block';
@@ -1711,43 +1813,50 @@ function editModel(brandId, currentName) {
     // Handle Enter and Escape keys
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            saveModelName(brandId, currentName);
+            saveModelName(brandId, modelName);
         } else if (e.key === 'Escape') {
-            cancelModelEdit(brandId, currentName);
+            cancelModelEdit(brandId, modelName);
         }
     });
 }
 
-function saveModelName(brandId, currentName) {
-    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
-    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+function saveModelName(brandId, modelName) {
+    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
     const newName = input.value.trim();
     
-    if (newName && newName !== currentName) {
-        if (brandModelManager.updateModel(brandId, currentName, newName)) {
+    if (newName && newName !== modelName) {
+        if (brandModelManager.updateModel(brandId, modelName, newName)) {
             showToast(`Model updated to "${newName}"!`, 'success');
             renderBrandsList();
         }
     } else {
-        cancelModelEdit(brandId, currentName);
+        cancelModelEdit(brandId, modelName);
     }
 }
 
-function cancelModelEdit(brandId, currentName) {
-    const modelId = currentName.replace(/[^a-zA-Z0-9]/g, '-');
-    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelId}`);
-    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelId}`);
-    const input = document.getElementById(`model-name-input-${brandId}-${modelId}`);
+function cancelModelEdit(brandId, modelName) {
+    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
+    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
+    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
     
     // Reset input value to original
-    input.value = currentName;
+    const model = brandModelManager.brands[brandId].models.find(m => m === modelName);
+    input.value = model;
     
     nameDisplay.style.display = 'block';
     nameEdit.style.display = 'none';
 }
 
 function deleteModelConfirm(brandId, modelName) {
-    if (confirm(`Are you sure you want to delete the model "${modelName}"?`)) {
+    const brand = brandModelManager.brands[brandId];
+    if (!brand) return;
+    
+    const modelCount = brand.models.length;
+    const message = modelCount > 1 ? 
+        `Are you sure you want to delete "${modelName}"?\nThis will also delete ${modelCount - 1} model(s).` :
+        `Are you sure you want to delete "${modelName}"?`;
+    
+    if (confirm(message)) {
         if (brandModelManager.deleteModel(brandId, modelName)) {
             renderBrandsList();
             showToast(`Model "${modelName}" deleted successfully!`, 'success');
