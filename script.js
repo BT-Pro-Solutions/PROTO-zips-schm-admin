@@ -4,7 +4,7 @@ const dummyData = [
         id: 1,
         name: "Hydraulic Lift Assembly",
         image: "schematics/Cable Roller Assembly.jpg",
-        imageSize: "2048x1536",
+        imageSize: "512x256",
         associatedModels: ["Jerr-Dan", "Century Steel Carrier"],
         partCount: 45,
         needsAttention: true,
@@ -103,7 +103,7 @@ const dummyData = [
         id: 10,
         name: "Lift Adapter Assembly",
         image: "schematics/lift-adapter.jpg",
-        imageSize: "1440x1080",
+        imageSize: "640x480",
         associatedModels: ["Jerr-Dan", "Miller Industries"],
         partCount: 12,
         needsAttention: false,
@@ -130,6 +130,74 @@ let currentPage = 1;
 let itemsPerPage = 5;
 let sortOrder = 'asc';
 let sortColumn = '';
+
+// Global state for position selection
+let positionSelectionMode = false;
+let currentPositionIndex = -1;
+
+// Toast notification system
+function showToast(message, type = 'info', duration = 5000) {
+    const container = document.getElementById('toastContainer');
+    const toastId = 'toast-' + Date.now();
+    
+    // Choose icon based on type
+    let iconName;
+    switch(type) {
+        case 'success': iconName = 'check-circle'; break;
+        case 'error': iconName = 'x-circle'; break;
+        case 'warning': iconName = 'alert-triangle'; break;
+        default: iconName = 'info'; break;
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.id = toastId;
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i data-feather="${iconName}"></i>
+        </div>
+        <div class="toast-content">${message}</div>
+        <button class="toast-close" onclick="hideToast('${toastId}')">
+            <i data-feather="x"></i>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    feather.replace();
+    
+    // Show toast with animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+    
+    // Auto-hide after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            hideToast(toastId);
+        }, duration);
+    }
+    
+    return toastId;
+}
+
+function hideToast(toastId) {
+    const toast = document.getElementById(toastId);
+    if (toast) {
+        toast.classList.add('hide');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }
+}
+
+function hideAllToasts() {
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        hideToast(toast.id);
+    });
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -220,11 +288,6 @@ function sortTable(column) {
             case 'image':
                 aValue = a.name; // Sort by name for image column
                 bValue = b.name;
-                break;
-            case 'imageSize':
-                // Convert size to bytes for proper sorting
-                aValue = parseFloat(a.imageSize);
-                bValue = parseFloat(b.imageSize);
                 break;
             case 'needsAttention':
                 aValue = a.needsAttention ? 1 : 0;
@@ -339,20 +402,26 @@ function renderTableView() {
     
     pageData.forEach(item => {
         const row = document.createElement('tr');
+        
+        // Parse image dimensions to check if width is less than 800px
+        const dimensions = item.imageSize.split('x');
+        const width = parseInt(dimensions[0]);
+        const isLowRes = width < 800;
+        const imageSizeClass = isLowRes ? 'image-size-warning' : 'image-size-normal';
+        
         row.innerHTML = `
             <td>
+                ${item.needsAttention ? '<span class="status-icon"><i data-feather="alert-triangle"></i><div class="tooltip">Needs Review</div></span>' : ''}
+            </td>
+            <td>
+                <img src="${item.image}" alt="${item.name}" class="clickable-image" onclick="openImageView('${item.image}', '${item.name}')" /><br>
+                <small class="${imageSizeClass}">${item.imageSize}</small>
+            </td>
+            <td>
                 <strong>${item.name}</strong><br>
-                <small class="text-secondary">Parts: ${item.partCount}</small>
+                <small class="text-secondary">${item.associatedModels.join(', ')}</small>
             </td>
-            <td>
-                <img src="${item.image}" alt="${item.name}" />
-            </td>
-            <td>${item.imageSize}</td>
-            <td>
-                <span class="status-badge ${item.needsAttention ? 'status-attention' : 'status-good'}">
-                    <i data-feather="${item.needsAttention ? 'alert-triangle' : 'check-circle'}"></i>
-                </span>
-            </td>
+            
             <td>
                 <div>${formatDate(item.lastEditedDate)}</div>
                 <small class="text-secondary">by ${item.lastEditedBy}</small>
@@ -534,9 +603,9 @@ function populateEditForm(id) {
         
         // Mock parts data
         partsData = [
-            { schematicNumber: '1', partSku: 'ABC-123', quantity: '2', parentSku: '', confidence: 0.95 },
-            { schematicNumber: '2', partSku: 'DEF-456', quantity: '1', parentSku: 'ABC-123', confidence: 0.88 },
-            { schematicNumber: '3', partSku: '', quantity: '', parentSku: '', confidence: 0.92 }
+            { schematicNumber: '1', partSku: 'ABC-123', quantity: '2', parentSku: '', confidence: 0.95, positionX: 20, positionY: 30 },
+            { schematicNumber: '2', partSku: 'DEF-456', quantity: '1', parentSku: 'ABC-123', confidence: 0.88, positionX: 60, positionY: 25 },
+            { schematicNumber: '3', partSku: '', quantity: '', parentSku: '', confidence: 0.92, positionX: 40, positionY: 70 }
         ];
         
         displayNumberOverlays();
@@ -665,13 +734,43 @@ function hideDepartmentSuggestions() {
     document.getElementById('departmentSuggestions').style.display = 'none';
 }
 
-// Close suggestions when clicking outside
+// Close modal when clicking outside or handle other clicks
 document.addEventListener('click', function(event) {
+    const schematicModal = document.getElementById('schematicModal');
+    const imageViewModal = document.getElementById('imageViewModal');
     const suggestionsContainer = document.getElementById('departmentSuggestions');
     const departmentInput = document.getElementById('schematicDepartment');
     
-    if (suggestionsContainer && !suggestionsContainer.contains(event.target) && event.target !== departmentInput) {
+    // Close schematic modal when clicking outside
+    if (event.target === schematicModal) {
+        closeSchematicModal();
+        return;
+    }
+    
+    // Close image view modal when clicking outside
+    if (event.target === imageViewModal) {
+        closeImageViewModal();
+        return;
+    }
+    
+    // Close suggestions when clicking outside (only if elements exist)
+    if (suggestionsContainer && departmentInput && 
+        !suggestionsContainer.contains(event.target) && event.target !== departmentInput) {
         hideDepartmentSuggestions();
+    }
+});
+
+// Handle escape key to close modals
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const schematicModal = document.getElementById('schematicModal');
+        const imageViewModal = document.getElementById('imageViewModal');
+        
+        if (schematicModal && schematicModal.classList.contains('active')) {
+            closeSchematicModal();
+        } else if (imageViewModal && imageViewModal.classList.contains('active')) {
+            closeImageViewModal();
+        }
     }
 });
 
@@ -781,6 +880,9 @@ function showImagePreview(imageSrc) {
     previewImg.src = imageSrc;
     container.style.display = 'block';
     
+    // Add click handler for position selection
+    previewImg.addEventListener('click', handleSchematicClick);
+    
     // Clear any existing overlays
     document.getElementById('numberOverlays').innerHTML = '';
     mockAINumbers = [];
@@ -792,6 +894,13 @@ function showImagePreview(imageSrc) {
 
 // Mock AI number scanning
 function scanForNumbers() {
+    // Warn user about clearing existing parts
+    if (partsData.length > 0) {
+        if (!confirm('Re-scanning will clear all existing parts data. Are you sure you want to continue?')) {
+            return;
+        }
+    }
+    
     // Mock AI detection with random positions
     mockAINumbers = [
         { number: '1', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.95 },
@@ -801,13 +910,15 @@ function scanForNumbers() {
         { number: '5', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.83 }
     ];
     
-    // Initialize parts data
+    // Initialize parts data with position information
     partsData = mockAINumbers.map(num => ({
         schematicNumber: num.number,
         partSku: '',
         quantity: '',
         parentSku: '',
-        confidence: num.confidence
+        confidence: num.confidence,
+        positionX: Math.round(num.x),
+        positionY: Math.round(num.y)
     }));
     
     displayNumberOverlays();
@@ -840,11 +951,30 @@ function updatePartsTable() {
         const confidenceClass = part.confidence > 0.9 ? 'confidence-high' : 
                               part.confidence > 0.7 ? 'confidence-medium' : 'confidence-low';
         
+        // Check if row has missing required data
+        const isMissingData = !part.partSku || 
+                            !part.quantity || 
+                            (!part.positionX && part.positionX !== 0) || 
+                            (!part.positionY && part.positionY !== 0) ||
+                            (part.positionX === 0 && part.positionY === 0);
+        
+        if (isMissingData) {
+            row.classList.add('part-row-warning');
+        }
+        
         row.innerHTML = `
-            <td><input type="text" value="${part.schematicNumber}" onchange="updatePartData(${index}, 'schematicNumber', this.value)" readonly></td>
-            <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="Enter SKU"></td>
-            <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="Qty" min="1"></td>
-            <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="Parent SKU"></td>
+            <td><input type="text" value="${part.schematicNumber}" onchange="updatePartData(${index}, 'schematicNumber', this.value)" readonly class="input-readonly"></td>
+            <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="Enter SKU" class="input-small"></td>
+            <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="Qty" min="1" class="input-qty"></td>
+            <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="Parent SKU" class="input-small"></td>
+            <td>
+                <div class="position-container">
+                    <small class="position-display">X:${part.positionX || 0}% Y:${part.positionY || 0}%</small>
+                    <button type="button" class="btn-position" onclick="startPositionSelection(${index})" title="Click to set position on schematic">
+                        <i data-feather="crosshair"></i>
+                    </button>
+                </div>
+            </td>
             <td><span class="confidence-score ${confidenceClass}">${Math.round(part.confidence * 100)}%</span></td>
             <td><button type="button" class="btn btn-tertiary" onclick="removePartRow(${index})"><i data-feather="trash-2"></i></button></td>
         `;
@@ -859,6 +989,8 @@ function updatePartsTable() {
 function updatePartData(index, field, value) {
     if (partsData[index]) {
         partsData[index][field] = value;
+        // Refresh the table to update warning highlights
+        updatePartsTable();
     }
 }
 
@@ -869,7 +1001,9 @@ function addPartRow() {
         partSku: '',
         quantity: '',
         parentSku: '',
-        confidence: 1.0 // Manual entries have 100% confidence
+        confidence: 1.0, // Manual entries have 100% confidence
+        positionX: 0,
+        positionY: 0
     });
     
     updatePartsTable();
@@ -878,6 +1012,71 @@ function addPartRow() {
 function removePartRow(index) {
     partsData.splice(index, 1);
     updatePartsTable();
+}
+
+// Position selection functionality
+function startPositionSelection(index) {
+    positionSelectionMode = true;
+    currentPositionIndex = index;
+    
+    // Add visual indicator to the image
+    const imagePreview = document.getElementById('imagePreview');
+    imagePreview.classList.add('position-selection-mode');
+    
+    // Update button text to indicate selection mode
+    const button = event.target.closest('.btn-position');
+    button.innerHTML = '<i data-feather="target"></i>';
+    button.title = 'Click on the schematic image to set position';
+    feather.replace();
+    
+    // Show instruction
+    showToast('Click on the schematic image to set the position for this part.', 'info', 8000);
+}
+
+function handleSchematicClick(event) {
+    if (!positionSelectionMode) return;
+    
+    const imagePreview = document.getElementById('previewImage');
+    const rect = imagePreview.getBoundingClientRect();
+    
+    // Calculate percentage position
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    
+    // Update the part data
+    if (currentPositionIndex >= 0 && partsData[currentPositionIndex]) {
+        partsData[currentPositionIndex].positionX = Math.round(x);
+        partsData[currentPositionIndex].positionY = Math.round(y);
+        
+        // Also update the corresponding mockAINumbers entry for visual overlay
+        const schematicNumber = partsData[currentPositionIndex].schematicNumber;
+        const mockNumberIndex = mockAINumbers.findIndex(num => num.number === schematicNumber);
+        if (mockNumberIndex >= 0) {
+            mockAINumbers[mockNumberIndex].x = Math.round(x);
+            mockAINumbers[mockNumberIndex].y = Math.round(y);
+        }
+        
+        // Refresh the visual overlays immediately
+        displayNumberOverlays();
+    }
+    
+    // Exit selection mode
+    exitPositionSelectionMode();
+    
+    // Update the table to reflect changes
+    updatePartsTable();
+    
+    // Show success toast
+    showToast('Position updated successfully!', 'success', 3000);
+}
+
+function exitPositionSelectionMode() {
+    positionSelectionMode = false;
+    currentPositionIndex = -1;
+    
+    // Remove visual indicator from image
+    const imagePreview = document.getElementById('imagePreview');
+    imagePreview.classList.remove('position-selection-mode');
 }
 
 // Parts list upload (mock OCR)
@@ -890,31 +1089,30 @@ function handlePartsListUpload(event) {
     if (!file) return;
     
     // Mock OCR processing
+    showToast('Processing parts list with OCR... Please wait.', 'info', 3000);
+    
     setTimeout(() => {
         // Simulate extracted data from OCR
         const ocrData = [
-            { schematicNumber: '1', partSku: 'OCR-ABC-123', quantity: '2', parentSku: '', confidence: 0.85 },
-            { schematicNumber: '2', partSku: 'OCR-DEF-456', quantity: '1', parentSku: 'OCR-ABC-123', confidence: 0.91 },
-            { schematicNumber: '3', partSku: 'OCR-GHI-789', quantity: '3', parentSku: '', confidence: 0.78 }
+            { schematicNumber: '1', partSku: 'OCR-ABC-123', quantity: '2', parentSku: '', confidence: 0.85, positionX: 15, positionY: 45 },
+            { schematicNumber: '2', partSku: 'OCR-DEF-456', quantity: '1', parentSku: 'OCR-ABC-123', confidence: 0.91, positionX: 55, positionY: 20 },
+            { schematicNumber: '3', partSku: 'OCR-GHI-789', quantity: '3', parentSku: '', confidence: 0.78, positionX: 75, positionY: 80 }
         ];
         
         // Merge with existing data or replace
         if (confirm('OCR processing complete. Replace existing parts data with extracted data?')) {
             partsData = ocrData;
             updatePartsTable();
+            showToast('Parts list processed successfully!', 'success');
         }
-        
-        alert('Parts list processed successfully!');
     }, 2000);
-    
-    alert('Processing parts list with OCR... Please wait.');
 }
 
 // Settings functionality
 function rescanImage() {
     if (confirm('Re-scanning will clear all existing parts data. Are you sure?')) {
         scanForNumbers();
-        alert('Image re-scanned successfully!');
+        showToast('Image re-scanned successfully!', 'success');
     }
 }
 
@@ -998,7 +1196,7 @@ function addNewSchematic(data) {
     
     dummyData.unshift(newSchematic);
     currentData = [...dummyData];
-    alert('Schematic added successfully!');
+    showToast('Schematic added successfully!', 'success');
 }
 
 function updateSchematic(id, data) {
@@ -1006,7 +1204,7 @@ function updateSchematic(id, data) {
     if (index > -1) {
         dummyData[index] = { ...dummyData[index], ...data };
         currentData = [...dummyData];
-        alert('Schematic updated successfully!');
+        showToast('Schematic updated successfully!', 'success');
     }
 }
 
@@ -1031,7 +1229,7 @@ function deleteSchematic(id) {
             
             renderData();
             updatePagination();
-            alert('Schematic deleted successfully!');
+            showToast('Schematic deleted successfully!', 'success');
         }
     }
 }
@@ -1045,31 +1243,18 @@ function formatDate(date) {
     });
 }
 
-// Close modal when clicking outside or handle other clicks
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('schematicModal');
-    const suggestionsContainer = document.getElementById('departmentSuggestions');
-    const departmentInput = document.getElementById('schematicDepartment');
+// Image viewing modal functions
+function openImageView(imageSrc, imageName) {
+    const modal = document.getElementById('imageViewModal');
+    const img = document.getElementById('imageViewImg');
+    const title = document.getElementById('imageViewTitle');
     
-    // Close modal when clicking outside
-    if (event.target === modal) {
-        closeSchematicModal();
-        return;
-    }
-    
-    // Close suggestions when clicking outside (only if elements exist)
-    if (suggestionsContainer && departmentInput && 
-        !suggestionsContainer.contains(event.target) && event.target !== departmentInput) {
-        hideDepartmentSuggestions();
-    }
-});
+    img.src = imageSrc;
+    title.textContent = imageName;
+    modal.classList.add('active');
+}
 
-// Handle escape key to close modal
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        const modal = document.getElementById('schematicModal');
-        if (modal && modal.classList.contains('active')) {
-            closeSchematicModal();
-        }
-    }
-});
+function closeImageViewModal() {
+    const modal = document.getElementById('imageViewModal');
+    modal.classList.remove('active');
+}

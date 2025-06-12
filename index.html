@@ -27,16 +27,17 @@
             </div>
             
             <div class="controls-right">
+                <i data-feather="filter" class="filter-icon"></i>
                 <select id="modelFilter" onchange="handleModelFilter()">
-                    <option value="all">View All Models</option>
+                    <option value="all">All Models</option>
                     <option value="Jerr-Dan">Jerr-Dan</option>
                     <option value="Century Steel Carrier">Century Steel Carrier</option>
                     <option value="Miller Industries">Miller Industries</option>
                 </select>
                 
                 <select id="sortBy" onchange="handleSort()">
-                    <option value="recent">Most Recent</option>
-                    <option value="name">Name</option>
+                    <option value="recent">Recently Updated</option>
+                    <option value="name">Name A-Z</option>
                     <option value="attention">Needs Review</option>
                 </select>
                 
@@ -58,17 +59,14 @@
                     <table class="schematics-table">
                         <thead>
                             <tr>
+                                <th onclick="sortTable('needsAttention')">
+                                    <i data-feather="chevron-down"></i>
+                                </th>
+                                <th>
+                                    Image
+                                </th>
                                 <th onclick="sortTable('name')">
                                     Name <i data-feather="chevron-down"></i>
-                                </th>
-                                <th onclick="sortTable('image')">
-                                    Image <i data-feather="chevron-down"></i>
-                                </th>
-                                <th onclick="sortTable('imageSize')">
-                                    Image Size <i data-feather="chevron-down"></i>
-                                </th>
-                                <th onclick="sortTable('needsAttention')">
-                                    Needs Review <i data-feather="chevron-down"></i>
                                 </th>
                                 <th onclick="sortTable('lastEditedDate')">
                                     Last Edited <i data-feather="chevron-down"></i>
@@ -116,6 +114,21 @@
         </div>
     </div>
 
+    <!-- Image Viewing Modal -->
+    <div id="imageViewModal" class="modal">
+        <div class="modal-content image-view-modal">
+            <div class="modal-header">
+                <h2 id="imageViewTitle">View Schematic</h2>
+                <button class="close-btn" onclick="closeImageViewModal()">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <div class="image-view-container">
+                <img id="imageViewImg" src="" alt="Schematic view">
+            </div>
+        </div>
+    </div>
+
     <!-- Add/Edit Schematic Modal -->
     <div id="schematicModal" class="modal">
         <div class="modal-content modal-large">
@@ -138,7 +151,7 @@
                             <input type="text" id="schematicName" required>
                         </div>
                         <div class="form-group">
-                            <label for="schematicDepartment">Department:</label>
+                            <label for="schematicDepartment">Category:</label>
                             <div class="tag-input-container">
                                 <input type="text" id="schematicDepartment" placeholder="Start typing to add departments..." onkeyup="handleDepartmentInput(event)">
                                 <div class="department-tags" id="departmentTags"></div>
@@ -194,10 +207,11 @@
                                 <table class="parts-table">
                                     <thead>
                                         <tr>
-                                            <th>Schematic Number</th>
+                                            <th>#</th>
                                             <th>Part SKU</th>
-                                            <th>Quantity</th>
+                                            <th>Qty</th>
                                             <th>Parent SKU</th>
+                                            <th>Position</th>
                                             <th>Confidence</th>
                                             <th>Actions</th>
                                         </tr>
@@ -257,5 +271,8 @@
         // Initialize Feather icons
         feather.replace();
     </script>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>
