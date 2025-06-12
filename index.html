@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schematics Admin - PROTO Zips</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
     <!-- Feather Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/feather.min.css">
 </head>
@@ -151,14 +151,6 @@
                             <input type="text" id="schematicName" required>
                         </div>
                         <div class="form-group">
-                            <label for="schematicDepartment">Category:</label>
-                            <div class="tag-input-container">
-                                <input type="text" id="schematicDepartment" placeholder="Start typing to add departments..." onkeyup="handleDepartmentInput(event)">
-                                <div class="department-tags" id="departmentTags"></div>
-                                <div class="department-suggestions" id="departmentSuggestions"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
                             <label for="schematicBrand">Brand:</label>
                             <select id="schematicBrand" onchange="handleBrandChange()" required>
                                 <option value="">Select a brand...</option>
@@ -266,7 +258,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=1.0.1"></script>
     <script>
         // Initialize Feather icons
         feather.replace();
