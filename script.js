@@ -564,6 +564,7 @@ function openSchematicModal(id = null) {
     const modalTitle = document.getElementById('modalTitle');
     const submitBtn = document.getElementById('submitBtn');
     const settingsGroup = document.getElementById('settingsGroup');
+    const deleteBtn = document.getElementById('deleteSchematicBtn');
     
     // Reset form and state
     document.getElementById('schematicForm').reset();
@@ -576,11 +577,16 @@ function openSchematicModal(id = null) {
         modalTitle.textContent = 'Edit Schematic';
         submitBtn.textContent = 'Update Schematic';
         settingsGroup.style.display = 'block';
+        if (deleteBtn) deleteBtn.style.display = '';
         populateEditForm(id);
     } else {
         modalTitle.textContent = 'Add New Schematic';
         submitBtn.textContent = 'Add Schematic';
-        settingsGroup.style.display = 'none';
+        settingsGroup.style.display = 'block';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        // Set toggles to default
+        document.getElementById('schematicPublished').checked = true;
+        document.getElementById('schematicReviewed').checked = false;
     }
     
     // Show modal and expand first section
@@ -629,6 +635,7 @@ function populateEditForm(id) {
     
     // Published toggle
     document.getElementById('schematicPublished').checked = schematic.published !== false;
+    document.getElementById('schematicReviewed').checked = schematic.reviewed === true;
     
     // If there's an existing image, show preview
     if (schematic.image) {
@@ -1214,6 +1221,7 @@ function handleSchematicSubmit(event) {
     const model = document.getElementById('schematicModel').value;
     const previewImg = document.getElementById('previewImage');
     const published = document.getElementById('schematicPublished').checked;
+    const reviewed = document.getElementById('schematicReviewed').checked;
     
     // Validation
     const errors = [];
@@ -1258,7 +1266,8 @@ function handleSchematicSubmit(event) {
         lastEditedDate: new Date(),
         departments: selectedDepartments,
         parts: partsData,
-        published: published
+        published: published,
+        reviewed: reviewed
     };
     
     if (isEditMode) {

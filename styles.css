@@ -8,13 +8,13 @@
     --tertiary-hover: #dee2e6;
     --white: #ffffff;
     --black: #000000;
-    --text-primary: #212529;
+    --text-primary: #363c43;
     --text-secondary: #6c757d;
     --border-color: #dee2e6;
     --border-radius: 0.2rem;
     --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     --box-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Reset and Base Styles */
@@ -305,7 +305,7 @@ select:focus {
 
 .schematics-table th {
     background-color: #f3f6fb;
-    padding: .5rem 1rem;
+    padding: .5rem;
     text-align: left;
     font-weight: 600;
     font-size: 14px;
