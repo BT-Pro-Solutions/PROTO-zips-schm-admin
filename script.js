@@ -520,15 +520,18 @@ const departmentSuggestions = [
 
 // Equipment categories for models
 const equipmentCategories = [
-    'Hydraulics',
-    'Electrical',
-    'Lighting',
-    'Controls',
+    'Car Carriers',
+    'Wreckers',
+    'Snow Removal',
     'Winches',
-    'Chassis',
-    'Body',
-    'Accessories',
-    'Other'
+    'Side Puller Recovery Systems',
+    'Tow Dollies',
+    'Detachable Underlifts',
+    'Auto Positioning Dollies',
+    'Lights',
+    'Trailers',
+    'Toolboxes',
+    'Fifth Wheel Power Hitch'
 ];
 
 // Helper to render category dropdown
@@ -1330,10 +1333,10 @@ let brandModelManager = {
         'jerr-dan': {
             name: 'Jerr-Dan',
             models: [
-                { name: 'Carrier 16', slug: 'carrier-16', category: 'Hydraulics' },
-                { name: 'Carrier 20', slug: 'carrier-20', category: 'Hydraulics' },
-                { name: 'MPL-NG', slug: 'mpl-ng', category: 'Controls' },
-                { name: 'Quick Swing', slug: 'quick-swing', category: 'Accessories' },
+                { name: 'Carrier 16', slug: 'carrier-16', category: 'Car Carriers' },
+                { name: 'Carrier 20', slug: 'carrier-20', category: 'Car Carriers' },
+                { name: 'MPL-NG', slug: 'mpl-ng', category: 'Wreckers' },
+                { name: 'Quick Swing', slug: 'quick-swing', category: 'Tow Dollies' },
                 { name: 'Rotator Series', slug: 'rotator-series', category: 'Other' }
             ]
         },
@@ -1342,18 +1345,18 @@ let brandModelManager = {
             models: [
                 { name: '10 Series', slug: '10-series', category: 'Chassis' },
                 { name: '12 Series', slug: '12-series', category: 'Chassis' },
-                { name: 'Steel Carrier', slug: 'steel-carrier', category: 'Body' },
-                { name: 'Heavy Duty', slug: 'heavy-duty', category: 'Body' },
-                { name: 'Vulcan 810', slug: 'vulcan-810', category: 'Accessories' }
+                { name: 'Steel Carrier', slug: 'steel-carrier', category: 'Wreckers' },
+                { name: 'Heavy Duty', slug: 'heavy-duty', category: 'Wreckers' },
+                { name: 'Vulcan 810', slug: 'vulcan-810', category: 'Tow Dollies' }
             ]
         },
         'miller': {
             name: 'Miller Industries',
             models: [
-                { name: 'Model 9000', slug: 'model-9000', category: 'Hydraulics' },
-                { name: 'Model 8000', slug: 'model-8000', category: 'Hydraulics' },
-                { name: 'Century 440', slug: 'century-440', category: 'Body' },
-                { name: 'Vulcan', slug: 'vulcan', category: 'Accessories' },
+                { name: 'Model 9000', slug: 'model-9000', category: 'Car Carriers' },
+                { name: 'Model 8000', slug: 'model-8000', category: 'Car Carriers' },
+                { name: 'Century 440', slug: 'century-440', category: 'Wreckers' },
+                { name: 'Vulcan', slug: 'vulcan', category: 'Tow Dollies' },
                 { name: 'Challenger 3212', slug: 'challenger-3212', category: 'Other' }
             ]
         }
