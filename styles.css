@@ -420,6 +420,7 @@ select:focus {
     width: 250px;
     height: 250px;
     object-fit: contain;
+    background-color: #fff;
 }
 
 .schematics-table.large-thumbnails th:nth-child(2),
@@ -612,6 +613,44 @@ select:focus {
 
 .modal-large {
     max-width: 900px;
+}
+
+.modal-content.modal-large {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    max-height: 90vh;
+    min-height: 400px;
+}
+
+.modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--white);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    padding: 1em;
+    justify-content: space-between;
+}
+
+.modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 0;
+}
+
+.form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--white);
+    border-top: 1px solid var(--border-color);
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 /* Section Groups */
@@ -958,14 +997,6 @@ select:disabled {
     cursor: not-allowed;
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
 .modal-header h2 {
     margin: 0;
     font-size: 1.25rem;
@@ -1076,6 +1107,16 @@ form {
     
     .action-buttons {
         flex-direction: column;
+    }
+    
+    .modal-content.modal-large {
+        height: 98vh;
+        max-height: 98vh;
+    }
+    
+    .modal-header, .form-actions {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
     }
 }
 

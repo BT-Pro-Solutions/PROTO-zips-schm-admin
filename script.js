@@ -9,7 +9,8 @@ const dummyData = [
         partCount: 45,
         needsAttention: true,
         lastEditedBy: "john.doe",
-        lastEditedDate: new Date("2024-01-15")
+        lastEditedDate: new Date("2024-01-15"),
+        published: true
     },
     {
         id: 2,
@@ -20,7 +21,8 @@ const dummyData = [
         partCount: 32,
         needsAttention: false,
         lastEditedBy: "jane.smith",
-        lastEditedDate: new Date("2024-01-10")
+        lastEditedDate: new Date("2024-01-10"),
+        published: true
     },
     {
         id: 3,
@@ -31,7 +33,8 @@ const dummyData = [
         partCount: 28,
         needsAttention: true,
         lastEditedBy: "mike.wilson",
-        lastEditedDate: new Date("2024-01-08")
+        lastEditedDate: new Date("2024-01-08"),
+        published: true
     },
     {
         id: 4,
@@ -42,7 +45,8 @@ const dummyData = [
         partCount: 18,
         needsAttention: false,
         lastEditedBy: "sarah.johnson",
-        lastEditedDate: new Date("2024-01-05")
+        lastEditedDate: new Date("2024-01-05"),
+        published: true
     },
     {
         id: 5,
@@ -53,7 +57,8 @@ const dummyData = [
         partCount: 67,
         needsAttention: false,
         lastEditedBy: "tom.brown",
-        lastEditedDate: new Date("2024-01-03")
+        lastEditedDate: new Date("2024-01-03"),
+        published: true
     },
     {
         id: 6,
@@ -64,7 +69,8 @@ const dummyData = [
         partCount: 23,
         needsAttention: true,
         lastEditedBy: "lisa.davis",
-        lastEditedDate: new Date("2024-01-01")
+        lastEditedDate: new Date("2024-01-01"),
+        published: true
     },
     {
         id: 7,
@@ -75,7 +81,8 @@ const dummyData = [
         partCount: 15,
         needsAttention: false,
         lastEditedBy: "david.garcia",
-        lastEditedDate: new Date("2023-12-28")
+        lastEditedDate: new Date("2023-12-28"),
+        published: true
     },
     {
         id: 8,
@@ -86,7 +93,8 @@ const dummyData = [
         partCount: 52,
         needsAttention: true,
         lastEditedBy: "amy.martinez",
-        lastEditedDate: new Date("2023-12-25")
+        lastEditedDate: new Date("2023-12-25"),
+        published: true
     },
     {
         id: 9,
@@ -97,7 +105,8 @@ const dummyData = [
         partCount: 34,
         needsAttention: false,
         lastEditedBy: "chris.lee",
-        lastEditedDate: new Date("2023-12-20")
+        lastEditedDate: new Date("2023-12-20"),
+        published: true
     },
     {
         id: 10,
@@ -108,7 +117,8 @@ const dummyData = [
         partCount: 12,
         needsAttention: false,
         lastEditedBy: "robert.taylor",
-        lastEditedDate: new Date("2023-12-15")
+        lastEditedDate: new Date("2023-12-15"),
+        published: true
     },
     {
         id: 11,
@@ -119,14 +129,15 @@ const dummyData = [
         partCount: 8,
         needsAttention: true,
         lastEditedBy: "kevin.chen",
-        lastEditedDate: new Date("2023-12-10")
+        lastEditedDate: new Date("2023-12-10"),
+        published: true
     }
 ];
 
 // Global State
 let currentData = [...dummyData];
 let currentPage = 1;
-let itemsPerPage = 5;
+let itemsPerPage = 8;
 let sortOrder = 'asc';
 let sortColumn = '';
 
@@ -615,6 +626,9 @@ function populateEditForm(id) {
     document.getElementById('schematicBrand').value = 'jerr-dan';
     handleBrandChange();
     document.getElementById('schematicModel').value = brandModelData['jerr-dan'][0];
+    
+    // Published toggle
+    document.getElementById('schematicPublished').checked = schematic.published !== false;
     
     // If there's an existing image, show preview
     if (schematic.image) {
@@ -1199,6 +1213,7 @@ function handleSchematicSubmit(event) {
     const brand = document.getElementById('schematicBrand').value;
     const model = document.getElementById('schematicModel').value;
     const previewImg = document.getElementById('previewImage');
+    const published = document.getElementById('schematicPublished').checked;
     
     // Validation
     const errors = [];
@@ -1242,7 +1257,8 @@ function handleSchematicSubmit(event) {
         lastEditedBy: 'current.user',
         lastEditedDate: new Date(),
         departments: selectedDepartments,
-        parts: partsData
+        parts: partsData,
+        published: published
     };
     
     if (isEditMode) {
