@@ -1450,6 +1450,7 @@ form {
 .model-name {
     font-weight: 500;
     color: var(--text-primary);
+    padding-bottom: .25rem;
 }
 
 .model-actions {

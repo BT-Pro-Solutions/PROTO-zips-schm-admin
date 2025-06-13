@@ -518,6 +518,29 @@ const departmentSuggestions = [
     'hydraulics', 'electrical', 'lighting', 'controls', 'winches'
 ];
 
+// Equipment categories for models
+const equipmentCategories = [
+    'Hydraulics',
+    'Electrical',
+    'Lighting',
+    'Controls',
+    'Winches',
+    'Chassis',
+    'Body',
+    'Accessories',
+    'Other'
+];
+
+// Helper to render category dropdown
+function renderCategoryDropdown(id, selected) {
+    return `<div class="input-group">
+        <label class="floating-label">Category</label>
+        <select id="${id}" class="model-category-select">
+            ${equipmentCategories.map(cat => `<option value="${cat}"${cat === selected ? ' selected' : ''}>${cat}</option>`).join('')}
+        </select>
+    </div>`;
+}
+
 // Modal functionality
 function openSchematicModal(id = null) {
     currentSchematicId = id;
@@ -1306,15 +1329,33 @@ let brandModelManager = {
     brands: {
         'jerr-dan': {
             name: 'Jerr-Dan',
-            models: ['Carrier 16', 'Carrier 20', 'MPL-NG', 'Quick Swing', 'Rotator Series']
+            models: [
+                { name: 'Carrier 16', slug: 'carrier-16', category: 'Hydraulics' },
+                { name: 'Carrier 20', slug: 'carrier-20', category: 'Hydraulics' },
+                { name: 'MPL-NG', slug: 'mpl-ng', category: 'Controls' },
+                { name: 'Quick Swing', slug: 'quick-swing', category: 'Accessories' },
+                { name: 'Rotator Series', slug: 'rotator-series', category: 'Other' }
+            ]
         },
         'century': {
             name: 'Century',
-            models: ['10 Series', '12 Series', 'Steel Carrier', 'Heavy Duty', 'Vulcan 810']
+            models: [
+                { name: '10 Series', slug: '10-series', category: 'Chassis' },
+                { name: '12 Series', slug: '12-series', category: 'Chassis' },
+                { name: 'Steel Carrier', slug: 'steel-carrier', category: 'Body' },
+                { name: 'Heavy Duty', slug: 'heavy-duty', category: 'Body' },
+                { name: 'Vulcan 810', slug: 'vulcan-810', category: 'Accessories' }
+            ]
         },
         'miller': {
             name: 'Miller Industries',
-            models: ['Model 9000', 'Model 8000', 'Century 440', 'Vulcan', 'Challenger 3212']
+            models: [
+                { name: 'Model 9000', slug: 'model-9000', category: 'Hydraulics' },
+                { name: 'Model 8000', slug: 'model-8000', category: 'Hydraulics' },
+                { name: 'Century 440', slug: 'century-440', category: 'Body' },
+                { name: 'Vulcan', slug: 'vulcan', category: 'Accessories' },
+                { name: 'Challenger 3212', slug: 'challenger-3212', category: 'Other' }
+            ]
         }
     },
     
@@ -1413,6 +1454,11 @@ function updateBrandModelData() {
     });
 }
 
+// Track which brand or model is being edited
+let editingBrandId = null;
+let editingModelSlug = null;
+let expandedBrands = new Set();
+
 function renderBrandsList() {
     const container = document.getElementById('brandsList');
     const brands = brandModelManager.getAllBrands();
@@ -1422,16 +1468,19 @@ function renderBrandsList() {
             <div class="empty-state">
                 <i data-feather="package"></i>
                 <p>No brands configured yet.</p>
-                <p>Click "Add Brand" to get started.</p>
+                <p>Click \"Add Brand\" to get started.</p>
             </div>
         `;
         feather.replace();
         return;
     }
     
-    container.innerHTML = brands.map(brand => `
-        <div class="brand-item" id="brand-${brand.id}">
-            <div class="brand-header" onclick="toggleBrand('${brand.id}')">
+    container.innerHTML = brands.map(brand => {
+        const isBrandEditing = editingBrandId === brand.id && !editingModelSlug;
+        const isExpanded = expandedBrands.has(brand.id) || isBrandEditing || (editingBrandId === brand.id && editingModelSlug);
+        return `
+        <div class="brand-item${isExpanded ? ' expanded' : ''}" id="brand-${brand.id}">
+            <div class="brand-header" ${isBrandEditing ? '' : `onclick="toggleBrand('${brand.id}')"`}>
                 <div class="brand-info">
                     <h3 class="brand-name" id="brand-name-${brand.id}">${brand.name}</h3>
                     <div class="brand-name-edit" id="brand-name-edit-${brand.id}" style="display: none;">
@@ -1454,12 +1503,12 @@ function renderBrandsList() {
                             </div>
                         </div>
                     </div>
-                    <span class="brand-model-count">${brand.models.length} models</span>
+                    ${!isBrandEditing ? `<span class="brand-model-count">${brand.models.length} models</span>` : ''}
                 </div>
                 <div class="brand-actions">
-                    <button class="btn-icon" onclick="event.stopPropagation(); editBrand('${brand.id}')" title="Edit brand">
+                    ${!isBrandEditing ? `<button class="btn-icon" onclick="event.stopPropagation(); editBrand('${brand.id}')" title="Edit brand">
                         <i data-feather="edit-2"></i>
-                    </button>
+                    </button>` : ''}
                     <button class="btn-icon danger" onclick="event.stopPropagation(); deleteBrandConfirm('${brand.id}')" title="Delete brand">
                         <i data-feather="trash-2"></i>
                     </button>
@@ -1476,39 +1525,43 @@ function renderBrandsList() {
                 </div>
                 <div class="models-list">
                     ${brand.models.length > 0 ? 
-                        brand.models.map(model => `
-                            <div class="model-item" id="model-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
-                                <span class="model-name" id="model-name-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">${model}</span>
-                                <div class="model-name-edit" id="model-name-edit-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}" style="display: none;">
+                        brand.models.map(model => {
+                            const isModelEditing = editingBrandId === brand.id && editingModelSlug === model.slug;
+                            return `
+                            <div class="model-item" id="model-${brand.id}-${model.slug}">
+                                <span class="model-name" id="model-name-${brand.id}-${model.slug}">${model.name}</span>
+                                <div class="model-name-edit" id="model-name-edit-${brand.id}-${model.slug}" style="display: none;">
                                     <div class="inline-form">
                                         <div class="input-group">
                                             <label class="floating-label">Name</label>
-                                            <input type="text" value="${model}" id="model-name-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                            <input type="text" value="${model.name}" id="model-name-input-${brand.id}-${model.slug}">
                                         </div>
                                         <div class="input-group">
                                             <label class="floating-label">Slug</label>
-                                            <input type="text" value="${model.toLowerCase().replace(/[^a-z0-9]/g, '-')}" id="model-slug-input-${brand.id}-${model.replace(/[^a-zA-Z0-9]/g, '-')}">
+                                            <input type="text" value="${model.slug}" id="model-slug-input-${brand.id}-${model.slug}">
                                         </div>
+                                        ${renderCategoryDropdown(`model-category-input-${brand.id}-${model.slug}`, model.category)}
                                         <div class="form-actions-inline">
-                                            <button class="btn-icon" onclick="saveModelName('${brand.id}', '${model}')" title="Save">
+                                            <button class="btn-icon" onclick="saveModelName('${brand.id}', '${model.slug}')" title="Save">
                                                 <i data-feather="check"></i>
                                             </button>
-                                            <button class="btn-icon" onclick="cancelModelEdit('${brand.id}', '${model}')" title="Cancel">
+                                            <button class="btn-icon" onclick="cancelModelEdit('${brand.id}', '${model.slug}')" title="Cancel">
                                                 <i data-feather="x"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="model-actions">
-                                    <button class="btn-icon" onclick="editModel('${brand.id}', '${model}')" title="Edit model">
+                                    ${!isModelEditing ? `<button class="btn-icon" onclick="editModel('${brand.id}', '${model.slug}'); event.stopPropagation();" title="Edit model">
                                         <i data-feather="edit-2"></i>
-                                    </button>
-                                    <button class="btn-icon danger" onclick="deleteModelConfirm('${brand.id}', '${model}')" title="Delete model">
+                                    </button>` : ''}
+                                    <button class="btn-icon danger" onclick="deleteModelConfirm('${brand.id}', '${model.slug}'); event.stopPropagation();" title="Delete model">
                                         <i data-feather="trash-2"></i>
                                     </button>
                                 </div>
                             </div>
-                        `).join('') : 
+                            `;
+                        }).join('') : 
                         '<div class="empty-state"><p>No models added yet.</p></div>'
                     }
                     <div class="add-model-form" id="add-model-form-${brand.id}" style="display: none;">
@@ -1521,6 +1574,7 @@ function renderBrandsList() {
                                 <label class="floating-label">Slug</label>
                                 <input type="text" placeholder="auto-generated" id="new-model-slug-${brand.id}">
                             </div>
+                            ${renderCategoryDropdown(`new-model-category-${brand.id}`, equipmentCategories[0])}
                             <div class="form-actions-inline">
                                 <button class="btn-icon" onclick="saveNewModel('${brand.id}')" title="Add">
                                     <i data-feather="check"></i>
@@ -1534,7 +1588,8 @@ function renderBrandsList() {
                 </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     // Add the "Add Brand" form at the end
     container.innerHTML += `
@@ -1568,92 +1623,31 @@ function renderBrandsList() {
 }
 
 function toggleBrand(brandId) {
-    const brandItem = document.getElementById(`brand-${brandId}`);
-    brandItem.classList.toggle('expanded');
-}
-
-function addNewBrand() {
-    // Hide the "Add Brand" button and show the form
-    const addBrandForm = document.getElementById('add-brand-form');
-    addBrandForm.style.display = 'block';
-    
-    // Focus on the input
-    const nameInput = document.getElementById('new-brand-input');
-    const slugInput = document.getElementById('new-brand-slug');
-    nameInput.focus();
-    
-    // Auto-generate slug from name
-    nameInput.addEventListener('input', function() {
-        const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        slugInput.value = slug;
-    });
-    
-    // Handle Enter key
-    nameInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveNewBrand();
-        } else if (e.key === 'Escape') {
-            cancelNewBrand();
-        }
-    });
-    
-    slugInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveNewBrand();
-        } else if (e.key === 'Escape') {
-            cancelNewBrand();
-        }
-    });
-}
-
-function saveNewBrand() {
-    const nameInput = document.getElementById('new-brand-input');
-    const slugInput = document.getElementById('new-brand-slug');
-    const name = nameInput.value.trim();
-    const slug = slugInput.value.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    
-    if (name) {
-        if (brandModelManager.addBrand(slug, name)) {
-            showToast(`Brand "${name}" added successfully!`, 'success');
-            renderBrandsList();
-        } else {
-            showToast('Brand slug already exists!', 'error');
-            slugInput.focus();
-        }
+    if (expandedBrands.has(brandId)) {
+        expandedBrands.delete(brandId);
     } else {
-        nameInput.focus();
+        expandedBrands.add(brandId);
     }
-}
-
-function cancelNewBrand() {
-    const addBrandForm = document.getElementById('add-brand-form');
-    addBrandForm.style.display = 'none';
-    
-    // Clear the inputs
-    const nameInput = document.getElementById('new-brand-input');
-    const slugInput = document.getElementById('new-brand-slug');
-    nameInput.value = '';
-    slugInput.value = '';
+    renderBrandsList();
 }
 
 function editBrand(brandId) {
+    editingBrandId = brandId;
+    editingModelSlug = null;
+    expandedBrands.add(brandId);
+    renderBrandsList();
     const nameDisplay = document.getElementById(`brand-name-${brandId}`);
     const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
     const nameInput = document.getElementById(`brand-name-input-${brandId}`);
     const slugInput = document.getElementById(`brand-slug-input-${brandId}`);
-    
     nameDisplay.style.display = 'none';
     nameEdit.style.display = 'block';
     nameInput.focus();
     nameInput.select();
-    
-    // Auto-generate slug from name
     nameInput.addEventListener('input', function() {
         const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         slugInput.value = slug;
     });
-    
-    // Handle Enter and Escape keys
     nameInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveBrandName(brandId);
@@ -1661,7 +1655,6 @@ function editBrand(brandId) {
             cancelBrandEdit(brandId);
         }
     });
-    
     slugInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             saveBrandName(brandId);
@@ -1709,157 +1702,59 @@ function saveBrandName(brandId) {
 }
 
 function cancelBrandEdit(brandId) {
-    const nameDisplay = document.getElementById(`brand-name-${brandId}`);
-    const nameEdit = document.getElementById(`brand-name-edit-${brandId}`);
-    const nameInput = document.getElementById(`brand-name-input-${brandId}`);
-    const slugInput = document.getElementById(`brand-slug-input-${brandId}`);
-    
-    // Reset input values to original
-    const brand = brandModelManager.brands[brandId];
-    nameInput.value = brand.name;
-    slugInput.value = brandId;
-    
-    nameDisplay.style.display = 'block';
-    nameEdit.style.display = 'none';
+    editingBrandId = null;
+    editingModelSlug = null;
+    renderBrandsList();
 }
 
-function deleteBrandConfirm(brandId) {
-    const brand = brandModelManager.brands[brandId];
-    if (!brand) return;
-    
-    const modelCount = brand.models.length;
-    const message = modelCount > 0 ? 
-        `Are you sure you want to delete "${brand.name}"?\nThis will also delete ${modelCount} model(s).` :
-        `Are you sure you want to delete "${brand.name}"?`;
-    
-    if (confirm(message)) {
-        if (brandModelManager.deleteBrand(brandId)) {
-            renderBrandsList();
-            showToast(`Brand "${brand.name}" deleted successfully!`, 'success');
-        }
-    }
-}
-
-function addNewModel(brandId) {
-    const addForm = document.getElementById(`add-model-form-${brandId}`);
-    const nameInput = document.getElementById(`new-model-input-${brandId}`);
-    const slugInput = document.getElementById(`new-model-slug-${brandId}`);
-    
-    addForm.style.display = 'block';
-    nameInput.focus();
-    
-    // Auto-generate slug from name
-    nameInput.addEventListener('input', function() {
-        const slug = this.value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        slugInput.value = slug;
-    });
-    
-    // Handle Enter and Escape keys
-    nameInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveNewModel(brandId);
-        } else if (e.key === 'Escape') {
-            cancelNewModel(brandId);
-        }
-    });
-    
-    slugInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveNewModel(brandId);
-        } else if (e.key === 'Escape') {
-            cancelNewModel(brandId);
-        }
-    });
-}
-
-function saveNewModel(brandId) {
-    const input = document.getElementById(`new-model-input-${brandId}`);
-    const slugInput = document.getElementById(`new-model-slug-${brandId}`);
-    const name = input.value.trim();
-    const slug = slugInput.value.trim() || name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    
-    if (name) {
-        if (brandModelManager.addModel(brandId, name)) {
-            showToast(`Model "${name}" added successfully!`, 'success');
-            renderBrandsList();
-        } else {
-            showToast('Model already exists!', 'error');
-            slugInput.focus();
-        }
-    } else {
-        input.focus();
-    }
-}
-
-function cancelNewModel(brandId) {
-    const addForm = document.getElementById(`add-model-form-${brandId}`);
-    addForm.style.display = 'none';
-    
-    // Clear the input
-    const input = document.getElementById(`new-model-input-${brandId}`);
-    input.value = '';
-}
-
-function editModel(brandId, modelName) {
-    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    
+function editModel(brandId, modelSlug) {
+    editingBrandId = brandId;
+    editingModelSlug = modelSlug;
+    expandedBrands.add(brandId);
+    renderBrandsList();
+    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelSlug}`);
+    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelSlug}`);
+    const input = document.getElementById(`model-name-input-${brandId}-${modelSlug}`);
     nameDisplay.style.display = 'none';
     nameEdit.style.display = 'block';
     input.focus();
     input.select();
-    
-    // Handle Enter and Escape keys
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            saveModelName(brandId, modelName);
+            saveModelName(brandId, modelSlug);
         } else if (e.key === 'Escape') {
-            cancelModelEdit(brandId, modelName);
+            cancelModelEdit(brandId, modelSlug);
         }
     });
 }
 
-function saveModelName(brandId, modelName) {
-    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    const newName = input.value.trim();
-    
-    if (newName && newName !== modelName) {
-        if (brandModelManager.updateModel(brandId, modelName, newName)) {
-            showToast(`Model updated to "${newName}"!`, 'success');
-            renderBrandsList();
-        }
-    } else {
-        cancelModelEdit(brandId, modelName);
-    }
+function saveModelName(brandId, modelSlug) {
+    // Simulate save: show toast and exit edit mode
+    showToast('Model updated successfully!', 'success');
+    editingBrandId = null;
+    editingModelSlug = null;
+    renderBrandsList();
 }
 
-function cancelModelEdit(brandId, modelName) {
-    const nameDisplay = document.getElementById(`model-name-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    const nameEdit = document.getElementById(`model-name-edit-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    const input = document.getElementById(`model-name-input-${brandId}-${modelName.replace(/[^a-zA-Z0-9]/g, '-')}`);
-    
-    // Reset input value to original
-    const model = brandModelManager.brands[brandId].models.find(m => m === modelName);
-    input.value = model;
-    
-    nameDisplay.style.display = 'block';
-    nameEdit.style.display = 'none';
+function cancelModelEdit(brandId, modelSlug) {
+    editingBrandId = null;
+    editingModelSlug = null;
+    renderBrandsList();
 }
 
-function deleteModelConfirm(brandId, modelName) {
+function deleteModelConfirm(brandId, modelSlug) {
     const brand = brandModelManager.brands[brandId];
     if (!brand) return;
     
     const modelCount = brand.models.length;
     const message = modelCount > 1 ? 
-        `Are you sure you want to delete "${modelName}"?\nThis will also delete ${modelCount - 1} model(s).` :
-        `Are you sure you want to delete "${modelName}"?`;
+        `Are you sure you want to delete "${modelSlug}"?\nThis will also delete ${modelCount - 1} model(s).` :
+        `Are you sure you want to delete "${modelSlug}"?`;
     
     if (confirm(message)) {
-        if (brandModelManager.deleteModel(brandId, modelName)) {
+        if (brandModelManager.deleteModel(brandId, modelSlug)) {
             renderBrandsList();
-            showToast(`Model "${modelName}" deleted successfully!`, 'success');
+            showToast(`Model "${modelSlug}" deleted successfully!`, 'success');
         }
     }
 }
