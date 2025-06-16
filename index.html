@@ -39,11 +39,15 @@
             
             <div class="controls-right">
                 <i data-feather="eye" class="filter-icon"></i>
-                <select id="modelFilter" onchange="handleModelFilter()">
-                    <option value="all">All Models</option>
+                <select id="brandFilter" onchange="handleBrandFilter()">
+                    <option value="all">All Brands</option>
                     <option value="Jerr-Dan">Jerr-Dan</option>
                     <option value="Century Steel Carrier">Century Steel Carrier</option>
                     <option value="Miller Industries">Miller Industries</option>
+                </select>
+                
+                <select id="modelFilter" onchange="handleModelFilter()" disabled style="margin-left: 0.5em;">
+                    <option value="">All Models</option>
                 </select>
                 
                 <i data-feather="image" class="filter-icon"></i>
@@ -81,15 +85,7 @@
             </div>
             
             <div class="pagination">
-                <button class="btn btn-tertiary" onclick="previousPage()" id="prevBtn">
-                    <i data-feather="chevron-left"></i>
-                    Previous
-                </button>
-                <span id="pageInfo">Page 1 of 1</span>
-                <button class="btn btn-tertiary" onclick="nextPage()" id="nextBtn">
-                    Next
-                    <i data-feather="chevron-right"></i>
-                </button>
+                <button class="btn btn-tertiary" id="loadMoreBtn" onclick="loadMore()">Load More</button>
             </div>
         </div>
     </div>

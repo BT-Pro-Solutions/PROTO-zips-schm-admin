@@ -136,8 +136,8 @@ const dummyData = [
 
 // Global State
 let currentData = [...dummyData];
-let currentPage = 1;
-let itemsPerPage = 8;
+let itemsToShow = 8;
+const itemsPerLoad = 8;
 let sortOrder = 'asc';
 let sortColumn = '';
 
@@ -223,9 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
         renderData();
         console.log('Data rendered');
         
-        updatePagination();
-        console.log('Pagination updated');
-        
         console.log('Application initialization complete');
     } catch (error) {
         console.error('Error during application initialization:', error);
@@ -307,26 +304,52 @@ function handleSearch() {
         );
     }
     
-    currentPage = 1;
+    itemsToShow = itemsPerLoad;
     renderData();
-    updatePagination();
 }
 
 // Model filter functionality
+function handleBrandFilter() {
+    const brandSelect = document.getElementById('brandFilter');
+    const modelSelect = document.getElementById('modelFilter');
+    const selectedBrand = brandSelect.value;
+
+    // Reset and populate model filter
+    modelSelect.innerHTML = '<option value="">Select a brand first...</option>';
+    modelSelect.disabled = true;
+    if (selectedBrand !== 'all') {
+        // Map display brand names to keys in brandModelData
+        let brandKey = '';
+        if (selectedBrand === 'Jerr-Dan') brandKey = 'jerr-dan';
+        else if (selectedBrand === 'Century Steel Carrier') brandKey = 'century';
+        else if (selectedBrand === 'Miller Industries') brandKey = 'miller';
+        if (brandModelData[brandKey]) {
+            modelSelect.innerHTML = '<option value="all">All Models</option>' + brandModelData[brandKey].map(model => `<option value="${model}">${model}</option>`).join('');
+            modelSelect.disabled = false;
+        }
+    }
+    // Reset model filter to 'all' on brand change
+    modelSelect.value = 'all';
+    itemsToShow = itemsPerLoad;
+    handleModelFilter();
+}
+
 function handleModelFilter() {
-    const selectedModel = document.getElementById('modelFilter').value;
-    
-    if (selectedModel === 'all') {
+    const brandSelect = document.getElementById('brandFilter');
+    const modelSelect = document.getElementById('modelFilter');
+    const selectedBrand = brandSelect.value;
+    const selectedModel = modelSelect.value;
+
+    if (selectedBrand === 'all') {
         currentData = [...dummyData];
     } else {
-        currentData = dummyData.filter(item => 
-            item.associatedModels.includes(selectedModel)
-        );
+        currentData = dummyData.filter(item => item.associatedModels.includes(selectedBrand));
+        if (selectedModel && selectedModel !== 'all') {
+            currentData = currentData.filter(item => item.associatedModels.includes(selectedModel));
+        }
     }
-    
-    currentPage = 1;
+    itemsToShow = itemsPerLoad;
     renderData();
-    updatePagination();
 }
 
 // Table column sorting
@@ -401,43 +424,10 @@ function updateSortHeaders() {
     }
 }
 
-// Pagination
-function previousPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        renderData();
-        updatePagination();
-    }
-}
-
-function nextPage() {
-    const totalPages = Math.ceil(currentData.length / itemsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        renderData();
-        updatePagination();
-    }
-}
-
-function updatePagination() {
-    const totalPages = Math.ceil(currentData.length / itemsPerPage);
-    const pageInfo = `Page ${currentPage} of ${totalPages}`;
-    
-    const pageInfoElement = document.getElementById('pageInfo');
-    if (pageInfoElement) {
-        pageInfoElement.textContent = pageInfo;
-    }
-    
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    
-    if (prevBtn) {
-        prevBtn.disabled = currentPage === 1;
-    }
-    
-    if (nextBtn) {
-        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
-    }
+// Load more data
+function loadMore() {
+    itemsToShow += itemsPerLoad;
+    renderData();
 }
 
 // Render data based on current view
@@ -454,10 +444,7 @@ function renderTableView() {
         return;
     }
     
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const pageData = currentData.slice(startIndex, endIndex);
-    
+    const pageData = currentData.slice(0, itemsToShow);
     tbody.innerHTML = '';
     
     pageData.forEach(item => {
@@ -507,6 +494,16 @@ function renderTableView() {
     
     // Update sort header indicators
     updateSortHeaders();
+    
+    // Show/hide Load More button
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        if (itemsToShow >= currentData.length) {
+            loadMoreBtn.style.display = 'none';
+        } else {
+            loadMoreBtn.style.display = '';
+        }
+    }
 }
 
 // Global state for modal
@@ -1278,7 +1275,6 @@ function handleSchematicSubmit(event) {
     
     closeSchematicModal();
     renderData();
-    updatePagination();
 }
 
 function addNewSchematic(data) {
@@ -1315,13 +1311,12 @@ function deleteSchematic(id) {
             currentData = [...dummyData];
             
             // Adjust current page if necessary
-            const totalPages = Math.ceil(currentData.length / itemsPerPage);
-            if (currentPage > totalPages && totalPages > 0) {
-                currentPage = totalPages;
+            const totalPages = Math.ceil(currentData.length / itemsPerLoad);
+            if (itemsToShow > totalPages && totalPages > 0) {
+                itemsToShow = totalPages;
             }
             
             renderData();
-            updatePagination();
             showToast('Schematic deleted successfully!', 'success');
         }
     }
