@@ -510,8 +510,11 @@ function renderTableView() {
 let currentSchematicId = null;
 let isEditMode = false;
 let selectedDepartments = [];
-let mockAINumbers = [];
+let hotspots = []; // Array of {id, partIndex, number, x, y, confidence}
 let partsData = [];
+let selectedHotspot = null;
+let hotspotIdCounter = 0;
+let hotspotScale = 1.0; // Scale factor for hotspot size (0.5 to 2.0)
 
 // Brand and model data
 const brandModelData = {
@@ -566,8 +569,16 @@ function openSchematicModal(id = null) {
     // Reset form and state
     document.getElementById('schematicForm').reset();
     selectedDepartments = [];
-    mockAINumbers = [];
+    hotspots = [];
     partsData = [];
+    selectedHotspot = null;
+    hotspotScale = 1.0; // Reset to standard size
+    
+    // Reset hotspot size selector
+    const hotspotSizeSelect = document.getElementById('hotspotSize');
+    if (hotspotSizeSelect) {
+        hotspotSizeSelect.value = '1.0';
+    }
     
     // Update modal for add/edit mode
     if (isEditMode) {
@@ -604,8 +615,9 @@ function closeSchematicModal() {
     // Reset all form fields and state
     document.getElementById('schematicForm').reset();
     selectedDepartments = [];
-    mockAINumbers = [];
+    hotspots = [];
     partsData = [];
+    selectedHotspot = null;
     currentSchematicId = null;
     isEditMode = false;
     
@@ -638,21 +650,24 @@ function populateEditForm(id) {
     if (schematic.image) {
         showImagePreview(schematic.image);
         
-        // Mock some AI-detected numbers for demonstration
-        mockAINumbers = [
-            { number: '1', x: 20, y: 30, confidence: 0.95 },
-            { number: '2', x: 60, y: 25, confidence: 0.88 },
-            { number: '3', x: 40, y: 70, confidence: 0.92 }
-        ];
-        
-        // Mock parts data
+        // Mock parts data with multiple hotspots
         partsData = [
-            { schematicNumber: '1', partSku: 'ABC-123', quantity: '2', parentSku: '', confidence: 0.95, positionX: 20, positionY: 30 },
-            { schematicNumber: '2', partSku: 'DEF-456', quantity: '1', parentSku: 'ABC-123', confidence: 0.88, positionX: 60, positionY: 25 },
-            { schematicNumber: '3', partSku: '', quantity: '', parentSku: '', confidence: 0.92, positionX: 40, positionY: 70 }
+            { schematicNumber: '1', partSku: 'ABC-123', quantity: '2', parentSku: '', confidence: 0.95 },
+            { schematicNumber: '2', partSku: 'DEF-456', quantity: '1', parentSku: 'ABC-123', confidence: 0.88 },
+            { schematicNumber: '3', partSku: 'GHI-789', quantity: '4', parentSku: '', confidence: 0.92 }
         ];
         
-        displayNumberOverlays();
+        // Mock hotspots - including multiple hotspots for part "3"
+        hotspots = [
+            { id: ++hotspotIdCounter, partIndex: 0, number: '1', x: 20, y: 30, confidence: 0.95 },
+            { id: ++hotspotIdCounter, partIndex: 1, number: '2', x: 60, y: 25, confidence: 0.88 },
+            { id: ++hotspotIdCounter, partIndex: 2, number: '3', x: 40, y: 70, confidence: 0.92 },
+            { id: ++hotspotIdCounter, partIndex: 2, number: '3', x: 25, y: 85, confidence: 0.92 },
+            { id: ++hotspotIdCounter, partIndex: 2, number: '3', x: 75, y: 45, confidence: 0.92 },
+            { id: ++hotspotIdCounter, partIndex: 2, number: '3', x: 55, y: 60, confidence: 0.92 }
+        ];
+        
+        displayHotspots();
         updatePartsTable();
         document.getElementById('partsTableContainer').style.display = 'block';
     }
@@ -804,6 +819,15 @@ document.addEventListener('click', function(event) {
     const suggestionsContainer = document.getElementById('departmentSuggestions');
     const departmentInput = document.getElementById('schematicDepartment');
     
+    // Handle hotspot deselection (only if schematic modal is active)
+    if (schematicModal && schematicModal.classList.contains('active')) {
+        if (!event.target.closest('.number-overlay') && !event.target.closest('.hotspot-controls')) {
+            selectedHotspot = null;
+            document.querySelectorAll('.number-overlay').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('.hotspot-controls').forEach(el => el.remove());
+        }
+    }
+    
     // Close brand model modal when clicking outside
     if (event.target === brandModelModal) {
         closeBrandModelModal();
@@ -912,10 +936,8 @@ function setupDragAndDrop() {
     });
     
     ['dragleave', 'drop'].forEach(eventName => {
-        uploadContainer.addEventListener(eventName, unhighlight, false);
+        uploadContainer.addEventListener('drop', handleDrop, false);
     });
-    
-    uploadContainer.addEventListener('drop', handleDrop, false);
     
     // Make the container clickable
     uploadContainer.addEventListener('click', () => {
@@ -945,6 +967,42 @@ function handleDrop(e) {
     }
 }
 
+function handleHotspotDrop(e) {
+    e.preventDefault();
+    
+    if (!draggedHotspotId) return;
+    
+    const rect = e.target.getBoundingClientRect();
+    // Center the hotspot on the drop location
+    const hotspotSize = 30 * hotspotScale; // Scaled size of hotspot in pixels
+    const offsetX = hotspotSize / 2;
+    const offsetY = hotspotSize / 2;
+    
+    let x = ((e.clientX - rect.left - offsetX) / rect.width) * 100;
+    let y = ((e.clientY - rect.top - offsetY) / rect.height) * 100;
+    
+    // Keep within bounds
+    x = Math.max(0, Math.min(95, x));
+    y = Math.max(0, Math.min(95, y));
+    
+    // Update hotspot position
+    const hotspot = hotspots.find(h => h.id === draggedHotspotId);
+    if (hotspot) {
+        hotspot.x = Math.round(x);
+        hotspot.y = Math.round(y);
+        
+        // Remove confidence score since user manually moved the hotspot
+        if (partsData[hotspot.partIndex]) {
+            partsData[hotspot.partIndex].confidence = null;
+        }
+        
+        displayHotspots();
+        selectHotspot(draggedHotspotId);
+        updatePartsTable(); // Refresh to show updated confidence
+        showToast('Hotspot position updated!', 'success', 2000);
+    }
+}
+
 function showImagePreview(imageSrc) {
     const container = document.getElementById('imagePreviewContainer');
     const previewImg = document.getElementById('previewImage');
@@ -952,16 +1010,16 @@ function showImagePreview(imageSrc) {
     previewImg.src = imageSrc;
     container.style.display = 'block';
     
-    // Add click handler for position selection
-    previewImg.addEventListener('click', handleSchematicClick);
-    
     // Clear any existing overlays
     document.getElementById('numberOverlays').innerHTML = '';
-    mockAINumbers = [];
+    hotspots = [];
     partsData = [];
+    selectedHotspot = null;
     
     // Expand the diagram section
     expandSection('diagram');
+    
+    console.log('Image preview loaded, ready for hotspots');
 }
 
 // Mock AI number scanning
@@ -973,43 +1031,214 @@ function scanForNumbers() {
         }
     }
     
-    // Mock AI detection with random positions
-    mockAINumbers = [
-        { number: '1', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.95 },
-        { number: '2', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.88 },
-        { number: '3', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.92 },
-        { number: '4', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.76 },
-        { number: '5', x: Math.random() * 80 + 10, y: Math.random() * 80 + 10, confidence: 0.83 }
+    // Initialize parts data
+    partsData = [
+        { schematicNumber: '1', partSku: '', quantity: '', parentSku: '', confidence: 0.95 },
+        { schematicNumber: '2', partSku: '', quantity: '', parentSku: '', confidence: 0.88 },
+        { schematicNumber: '3', partSku: '', quantity: '', parentSku: '', confidence: 0.92 },
+        { schematicNumber: '4', partSku: '', quantity: '', parentSku: '', confidence: 0.76 },
+        { schematicNumber: '5', partSku: '', quantity: '', parentSku: '', confidence: 0.83 }
     ];
     
-    // Initialize parts data with position information
-    partsData = mockAINumbers.map(num => ({
-        schematicNumber: num.number,
-        partSku: '',
-        quantity: '',
-        parentSku: '',
-        confidence: num.confidence,
-        positionX: Math.round(num.x),
-        positionY: Math.round(num.y)
+    // Initialize hotspots (one per part initially)
+    hotspots = partsData.map((part, index) => ({
+        id: ++hotspotIdCounter,
+        partIndex: index,
+        number: part.schematicNumber,
+        x: Math.random() * 80 + 10,
+        y: Math.random() * 80 + 10,
+        confidence: part.confidence
     }));
     
-    displayNumberOverlays();
+    displayHotspots();
     updatePartsTable();
     document.getElementById('partsTableContainer').style.display = 'block';
 }
 
-function displayNumberOverlays() {
+function displayHotspots() {
     const container = document.getElementById('numberOverlays');
     container.innerHTML = '';
     
-    mockAINumbers.forEach(num => {
+    hotspots.forEach(hotspot => {
         const overlay = document.createElement('div');
-        overlay.className = 'number-overlay';
-        overlay.style.left = num.x + '%';
-        overlay.style.top = num.y + '%';
-        overlay.textContent = num.number;
+        overlay.className = 'number-overlay draggable';
+        overlay.style.left = hotspot.x + '%';
+        overlay.style.top = hotspot.y + '%';
+        // Apply scaling to hotspot size and font
+        const size = 30 * hotspotScale;
+        const fontSize = 14 * hotspotScale;
+        overlay.style.width = size + 'px';
+        overlay.style.height = size + 'px';
+        overlay.style.fontSize = fontSize + 'px';
+        overlay.textContent = hotspot.number;
+        overlay.dataset.hotspotId = hotspot.id;
+        
+        // Add click handler for selection
+        overlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('Hotspot clicked:', hotspot.id);
+            selectHotspot(hotspot.id);
+        });
+        
+        // Make draggable
+        overlay.draggable = true;
+        overlay.addEventListener('dragstart', handleHotspotDragStart);
+        overlay.addEventListener('dragend', handleHotspotDragEnd);
+        
         container.appendChild(overlay);
     });
+    
+    // Add drop handling to the image
+    const imagePreview = document.getElementById('previewImage');
+    // Remove existing event listeners to prevent duplicates
+    imagePreview.removeEventListener('dragover', handleDragOver);
+    imagePreview.removeEventListener('drop', handleHotspotDrop);
+    // Add fresh event listeners
+    imagePreview.addEventListener('dragover', handleDragOver);
+    imagePreview.addEventListener('drop', handleHotspotDrop);
+}
+
+function selectHotspot(hotspotId) {
+    console.log('Selecting hotspot:', hotspotId);
+    // Clear previous selection
+    document.querySelectorAll('.number-overlay').forEach(el => el.classList.remove('selected'));
+    
+    selectedHotspot = hotspotId;
+    const overlay = document.querySelector(`[data-hotspot-id="${hotspotId}"]`);
+    if (!overlay) {
+        console.error('Could not find overlay for hotspot:', hotspotId);
+        return;
+    }
+    overlay.classList.add('selected');
+    
+    // Show hotspot controls
+    showHotspotControls(hotspotId);
+}
+
+function showHotspotControls(hotspotId) {
+    // Remove existing controls
+    document.querySelectorAll('.hotspot-controls').forEach(el => el.remove());
+    
+    const hotspot = hotspots.find(h => h.id === hotspotId);
+    if (!hotspot) return;
+    
+    const overlay = document.querySelector(`[data-hotspot-id="${hotspotId}"]`);
+    const controls = document.createElement('div');
+    controls.className = 'hotspot-controls';
+    
+    // Count how many hotspots exist for this part
+    const partHotspots = hotspots.filter(h => h.partIndex === hotspot.partIndex);
+    const canRemove = partHotspots.length > 1;
+    
+    // Create duplicate button
+    const duplicateBtn = document.createElement('button');
+    duplicateBtn.className = 'hotspot-btn duplicate-btn';
+    duplicateBtn.title = 'Duplicate';
+    duplicateBtn.innerHTML = '<i data-feather="copy"></i>';
+    duplicateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Duplicate button clicked');
+        duplicateHotspot(hotspotId);
+    });
+    controls.appendChild(duplicateBtn);
+    
+    // Create remove button if allowed
+    if (canRemove) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'hotspot-btn remove-btn';
+        removeBtn.title = 'Remove';
+        removeBtn.innerHTML = '<i data-feather="trash-2"></i>';
+        removeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Remove button clicked');
+            removeHotspot(hotspotId);
+        });
+        controls.appendChild(removeBtn);
+    }
+    
+    // Position controls near the hotspot
+    const rect = overlay.getBoundingClientRect();
+    const containerRect = overlay.parentElement.getBoundingClientRect();
+    const scaledSize = 30 * hotspotScale;
+    controls.style.position = 'absolute';
+    controls.style.left = (rect.left - containerRect.left + scaledSize + 5) + 'px';
+    controls.style.top = (rect.top - containerRect.top - 10) + 'px';
+    
+    overlay.parentElement.appendChild(controls);
+    feather.replace();
+}
+
+function duplicateHotspot(hotspotId) {
+    console.log('Duplicating hotspot:', hotspotId);
+    const hotspot = hotspots.find(h => h.id === hotspotId);
+    if (!hotspot) {
+        console.error('Hotspot not found:', hotspotId);
+        return;
+    }
+    
+    const newHotspot = {
+        id: ++hotspotIdCounter,
+        partIndex: hotspot.partIndex,
+        number: hotspot.number,
+        x: hotspot.x + 5, // Offset slightly
+        y: hotspot.y + 5,
+        confidence: hotspot.confidence
+    };
+    
+    hotspots.push(newHotspot);
+    
+    // Remove confidence score from the associated part since user manually duplicated
+    if (partsData[hotspot.partIndex]) {
+        partsData[hotspot.partIndex].confidence = null;
+    }
+    
+    console.log('New hotspot created:', newHotspot);
+    displayHotspots();
+    selectHotspot(newHotspot.id);
+    updatePartsTable(); // Refresh to show updated confidence
+    showToast('Hotspot duplicated successfully!', 'success', 2000);
+}
+
+function removeHotspot(hotspotId) {
+    console.log('Removing hotspot:', hotspotId);
+    const hotspot = hotspots.find(h => h.id === hotspotId);
+    if (!hotspot) {
+        console.error('Hotspot not found:', hotspotId);
+        return;
+    }
+    
+    // Check if this is the last hotspot for the part
+    const partHotspots = hotspots.filter(h => h.partIndex === hotspot.partIndex);
+    if (partHotspots.length <= 1) {
+        showToast('Cannot remove the last hotspot for a part. Each part must have at least one hotspot.', 'warning');
+        return;
+    }
+    
+    hotspots = hotspots.filter(h => h.id !== hotspotId);
+    displayHotspots();
+    
+    // Clear selection
+    selectedHotspot = null;
+    document.querySelectorAll('.hotspot-controls').forEach(el => el.remove());
+    showToast('Hotspot removed successfully!', 'success', 2000);
+}
+
+let draggedHotspotId = null;
+
+function handleHotspotDragStart(e) {
+    draggedHotspotId = parseInt(e.target.dataset.hotspotId);
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleHotspotDragEnd(e) {
+    draggedHotspotId = null;
 }
 
 // Parts table management
@@ -1022,32 +1251,24 @@ function updatePartsTable() {
         
         const confidenceClass = part.confidence > 0.9 ? 'confidence-high' : 
                               part.confidence > 0.7 ? 'confidence-medium' : 'confidence-low';
+        const confidenceDisplay = part.confidence === null ? 
+                                'Manual' : 
+                                `${Math.round(part.confidence * 100)}%`;
         
-        // Check if row has missing required data
-        const isMissingData = !part.partSku || 
-                            !part.quantity || 
-                            (!part.positionX && part.positionX !== 0) || 
-                            (!part.positionY && part.positionY !== 0) ||
-                            (part.positionX === 0 && part.positionY === 0);
+        // Check if row has missing required data or no hotspots
+        const partHotspots = hotspots.filter(h => h.partIndex === index);
+        const isMissingData = !part.partSku || !part.quantity || partHotspots.length === 0;
         
         if (isMissingData) {
             row.classList.add('part-row-warning');
         }
         
         row.innerHTML = `
-            <td><input type="text" value="${part.schematicNumber}" onchange="updatePartData(${index}, 'schematicNumber', this.value)" readonly class="input-readonly"></td>
+            <td><input type="text" value="${part.schematicNumber}" onchange="updatePartNumber(${index}, this.value)" class="input-small"></td>
             <td><input type="text" value="${part.partSku}" onchange="updatePartData(${index}, 'partSku', this.value)" placeholder="-" class="input-small"></td>
             <td><input type="number" value="${part.quantity}" onchange="updatePartData(${index}, 'quantity', this.value)" placeholder="0" min="1" class="input-qty"></td>
             <td><input type="text" value="${part.parentSku}" onchange="updatePartData(${index}, 'parentSku', this.value)" placeholder="-" class="input-small"></td>
-            <td>
-                <div class="position-container">
-                    <small class="position-display">X:${part.positionX || 0}% Y:${part.positionY || 0}%</small>
-                    <button type="button" class="btn-position" onclick="startPositionSelection(${index})" title="Click to set position on schematic">
-                        <i data-feather="crosshair"></i>
-                    </button>
-                </div>
-            </td>
-            <td><span class="confidence-score ${confidenceClass}">${Math.round(part.confidence * 100)}%</span></td>
+            <td><span class="confidence-score ${confidenceClass}">${confidenceDisplay}</span></td>
             <td><button type="button" class="btn btn-tertiary" onclick="removePartRow(${index})"><i data-feather="trash-2"></i></button></td>
         `;
         
@@ -1058,9 +1279,32 @@ function updatePartsTable() {
     feather.replace();
 }
 
+function updatePartNumber(index, newNumber) {
+    if (partsData[index]) {
+        const oldNumber = partsData[index].schematicNumber;
+        partsData[index].schematicNumber = newNumber;
+        
+        // Update all hotspots for this part
+        hotspots.forEach(hotspot => {
+            if (hotspot.partIndex === index) {
+                hotspot.number = newNumber;
+            }
+        });
+        
+        // Refresh displays
+        displayHotspots();
+        updatePartsTable();
+        showToast(`Part number updated from "${oldNumber}" to "${newNumber}"`, 'success', 3000);
+    }
+}
+
 function updatePartData(index, field, value) {
     if (partsData[index]) {
         partsData[index][field] = value;
+        // Remove confidence score when user manually edits data
+        if (value.trim() !== '') {
+            partsData[index].confidence = null;
+        }
         // Refresh the table to update warning highlights
         updatePartsTable();
     }
@@ -1068,101 +1312,47 @@ function updatePartData(index, field, value) {
 
 function addPartRow() {
     const newNumber = String(partsData.length + 1);
-    partsData.push({
+    const newPart = {
         schematicNumber: newNumber,
         partSku: '',
         quantity: '',
         parentSku: '',
-        confidence: 1.0, // Manual entries have 100% confidence
-        positionX: 0,
-        positionY: 0
-    });
+        confidence: null // Manual entries don't have AI confidence scores
+    };
     
+    partsData.push(newPart);
+    
+    // Add a default hotspot for the new part
+    const newHotspot = {
+        id: ++hotspotIdCounter,
+        partIndex: partsData.length - 1,
+        number: newNumber,
+        x: 50, // Center position
+        y: 50,
+        confidence: null
+    };
+    
+    hotspots.push(newHotspot);
+    displayHotspots();
     updatePartsTable();
 }
 
 function removePartRow(index) {
-    partsData.splice(index, 1);
-    updatePartsTable();
-}
-
-// Position selection functionality
-function startPositionSelection(index) {
-    positionSelectionMode = true;
-    currentPositionIndex = index;
+    // Remove all hotspots for this part
+    hotspots = hotspots.filter(h => h.partIndex !== index);
     
-    // Add visual indicator to the image
-    const imagePreview = document.getElementById('imagePreview');
-    imagePreview.classList.add('position-selection-mode');
-    
-    // Update button text to indicate selection mode
-    const button = event.target.closest('.btn-position');
-    button.innerHTML = '<i data-feather="target"></i>';
-    button.title = 'Click on the schematic image to set position';
-    feather.replace();
-    
-    // Show instruction
-    showToast('Click on the schematic image to set the position for this part.', 'info', 8000);
-}
-
-function handleSchematicClick(event) {
-    if (!positionSelectionMode) return;
-    
-    const imagePreview = document.getElementById('previewImage');
-    const rect = imagePreview.getBoundingClientRect();
-    
-    // Calculate percentage position
-    let x = ((event.clientX - rect.left) / rect.width) * 100;
-    let y = ((event.clientY - rect.top) / rect.height) * 100;
-    
-    // Offset to center the overlay (30px overlay size)
-    // Calculate the offset as a percentage of the image size
-    const overlaySize = 30; // pixels
-    const xOffset = (overlaySize / 2 / rect.width) * 100;
-    const yOffset = (overlaySize / 2 / rect.height) * 100;
-    
-    // Adjust position to center the overlay on the click point
-    x = x - xOffset;
-    y = y - yOffset;
-    
-    // Ensure the overlay stays within bounds
-    x = Math.max(0, Math.min(100 - (overlaySize / rect.width) * 100, x));
-    y = Math.max(0, Math.min(100 - (overlaySize / rect.height) * 100, y));
-    
-    // Update the part data
-    if (currentPositionIndex >= 0 && partsData[currentPositionIndex]) {
-        partsData[currentPositionIndex].positionX = Math.round(x);
-        partsData[currentPositionIndex].positionY = Math.round(y);
-        
-        // Also update the corresponding mockAINumbers entry for visual overlay
-        const schematicNumber = partsData[currentPositionIndex].schematicNumber;
-        const mockNumberIndex = mockAINumbers.findIndex(num => num.number === schematicNumber);
-        if (mockNumberIndex >= 0) {
-            mockAINumbers[mockNumberIndex].x = Math.round(x);
-            mockAINumbers[mockNumberIndex].y = Math.round(y);
+    // Update hotspot part indices for parts that come after this one
+    hotspots.forEach(hotspot => {
+        if (hotspot.partIndex > index) {
+            hotspot.partIndex--;
         }
-        
-        // Refresh the visual overlays immediately
-        displayNumberOverlays();
-    }
+    });
     
-    // Exit selection mode
-    exitPositionSelectionMode();
+    // Remove the part
+    partsData.splice(index, 1);
     
-    // Update the table to reflect changes
+    displayHotspots();
     updatePartsTable();
-    
-    // Show success toast
-    showToast('Position updated successfully!', 'success', 3000);
-}
-
-function exitPositionSelectionMode() {
-    positionSelectionMode = false;
-    currentPositionIndex = -1;
-    
-    // Remove visual indicator from image
-    const imagePreview = document.getElementById('imagePreview');
-    imagePreview.classList.remove('position-selection-mode');
 }
 
 // Parts list upload (mock OCR)
@@ -1180,14 +1370,22 @@ function handlePartsListUpload(event) {
     setTimeout(() => {
         // Simulate extracted data from OCR
         const ocrData = [
-            { schematicNumber: '1', partSku: 'OCR-ABC-123', quantity: '2', parentSku: '', confidence: 0.85, positionX: 15, positionY: 45 },
-            { schematicNumber: '2', partSku: 'OCR-DEF-456', quantity: '1', parentSku: 'OCR-ABC-123', confidence: 0.91, positionX: 55, positionY: 20 },
-            { schematicNumber: '3', partSku: 'OCR-GHI-789', quantity: '3', parentSku: '', confidence: 0.78, positionX: 75, positionY: 80 }
+            { schematicNumber: '1', partSku: 'OCR-ABC-123', quantity: '2', parentSku: '', confidence: 0.85 },
+            { schematicNumber: '2', partSku: 'OCR-DEF-456', quantity: '1', parentSku: 'OCR-ABC-123', confidence: 0.91 },
+            { schematicNumber: '3', partSku: 'OCR-GHI-789', quantity: '3', parentSku: '', confidence: 0.78 }
+        ];
+        
+        const ocrHotspots = [
+            { id: ++hotspotIdCounter, partIndex: 0, number: '1', x: 15, y: 45, confidence: 0.85 },
+            { id: ++hotspotIdCounter, partIndex: 1, number: '2', x: 55, y: 20, confidence: 0.91 },
+            { id: ++hotspotIdCounter, partIndex: 2, number: '3', x: 75, y: 80, confidence: 0.78 }
         ];
         
         // Merge with existing data or replace
         if (confirm('OCR processing complete. Replace existing parts data with extracted data?')) {
             partsData = ocrData;
+            hotspots = ocrHotspots;
+            displayHotspots();
             updatePartsTable();
             showToast('Parts list processed successfully!', 'success');
         }
@@ -1780,4 +1978,20 @@ function deleteModelConfirm(brandId, modelSlug) {
             showToast(`Model "${modelSlug}" deleted successfully!`, 'success');
         }
     }
+}
+
+// Handle hotspot size changes
+function handleHotspotSizeChange() {
+    const sizeSelect = document.getElementById('hotspotSize');
+    hotspotScale = parseFloat(sizeSelect.value);
+    
+    // Re-render all hotspots with new size
+    displayHotspots();
+    
+    // If a hotspot is selected, update its controls position
+    if (selectedHotspot) {
+        showHotspotControls(selectedHotspot);
+    }
+    
+    showToast(`Hotspot size set to ${Math.round(hotspotScale * 100)}%`, 'success', 2000);
 }

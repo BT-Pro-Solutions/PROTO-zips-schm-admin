@@ -150,10 +150,22 @@
                                     <img id="previewImage" src="" alt="Schematic preview">
                                     <div class="number-overlays" id="numberOverlays"></div>
                                 </div>
-                                <button type="button" class="btn btn-secondary" onclick="scanForNumbers()">
-                                    <i data-feather="search"></i>
-                                    Scan for Numbers
-                                </button>
+                                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                                    <button type="button" class="btn btn-secondary" onclick="scanForNumbers()">
+                                        <i data-feather="search"></i>
+                                        Scan for Numbers
+                                    </button>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <label for="hotspotSize" style="font-size: 0.875rem; white-space: nowrap;">Hotspot Size:</label>
+                                        <select id="hotspotSize" onchange="handleHotspotSizeChange()" style="width: auto;">
+                                            <option value="0.5">Extra Small</option>
+                                            <option value="0.75">Small</option>
+                                            <option value="1.0" selected>Medium</option>
+                                            <option value="1.25">Large</option>
+                                            <option value="1.5">Extra Large</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div class="parts-table-container" id="partsTableContainer" style="display: none;">
                                 <h4>Parts Table</h4>
@@ -165,7 +177,6 @@
                                                 <th>Part SKU</th>
                                                 <th>Qty</th>
                                                 <th>Parent SKU</th>
-                                                <th>Position</th>
                                                 <th>Confidence</th>
                                                 <th>Actions</th>
                                             </tr>

@@ -816,17 +816,85 @@ select:focus {
 
 .number-overlay {
     position: absolute;
+    background: var(--primary-color);
+    color: white;
     width: 30px;
     height: 30px;
-    border: 2px solid var(--primary-color);
     border-radius: 50%;
-    background-color: rgba(220, 53, 69, 0.8);
-    color: var(--white);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.875rem;
+    font-size: 14px;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    pointer-events: auto;
+}
+
+.number-overlay.draggable {
+    cursor: move;
+}
+
+.number-overlay.draggable:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.number-overlay.selected {
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3);
+    transform: scale(1.15);
+    z-index: 20;
+}
+
+/* Hotspot control buttons */
+.hotspot-controls {
+    position: absolute;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 25;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    pointer-events: auto;
+}
+
+.hotspot-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 0.2rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: var(--white);
+    color: var(--text-primary);
+}
+
+.hotspot-btn:hover {
+    background: var(--tertiary-color);
+}
+
+.hotspot-btn.duplicate-btn:hover {
+    background: #e7f3ff;
+    color: #0066cc;
+}
+
+.hotspot-btn.remove-btn:hover {
+    background: #ffeaea;
+    color: var(--primary-color);
+}
+
+.hotspot-btn svg {
+    width: 14px !important;
+    height: 14px !important;
 }
 
 /* Parts Table */
